@@ -1,0 +1,9 @@
+# Auxiliary files
+*.pyc
+.*.sw*
+
+# Large archive, image and video files
+*.pickle
+*.gz
+*.png
+*.avi
