@@ -7,108 +7,207 @@ import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 
-import becca.tools as bt
+import becca_viz.viz_tools as vt
+import becca_viz.preprocessor_viz as preprocessor_viz
+import becca_viz.postprocessor_viz as postprocessor_viz
+import becca_viz.input_filter_viz as input_filter_viz
 
 
-def plot_point_activity(x, y, activity, spacing):
+lwf = .3  # Linewidth of the frames
+
+wd_ = 18  # Total width of the image
+ht_ = 9  # Total heigh of the image
+brd = .75  # Border thickness around frames
+
+halfwidth_weight = 5
+centerwidth_weight = 1
+total_weight = 2 * halfwidth_weight + centerwidth_weight
+
+no_borders = wd_ - brd * 4  # Width available after borders are removed
+wdh = no_borders * halfwidth_weight / total_weight  # Width of wide columns
+wdc = no_borders * centerwidth_weight / total_weight  # Width of center column
+
+htf = ht_ - brd * 2  # Full height, minus borders
+n_zipties = 2  # Assumed number of zipties
+n_rows = 1 + n_zipties * 2  # Total number of frames stacked vertically
+no_borders_ht = ht_ - brd * (n_rows + 1)  # Total non-border height
+htr = no_borders_ht / n_rows  # height of each row
+wdq = (wdh - brd) / 2  # Quarter-width
+
+rad = htr / 6  # The radius of the rounded corners on frames
+
+preprocessor_bbox = [brd, brd + wdq,
+                     brd, brd + htr]
+postprocessor_bbox = [2 * brd + wdq, brd + wdh,
+                      brd, brd + htr]
+filt_0_bbox = [brd, brd + wdh,
+                     2 * brd + htr, 2 * brd + 2 * htr]
+ziptie_0_bbox = [brd, brd + wdh,
+                 3 * brd + 2 * htr, 3 * brd + 3 * htr]
+cable_filt_1_bbox = [brd, brd + wdh,
+                     4 * brd + 3 * htr, 4 * brd + 4 * htr]
+ziptie_1_bbox = [brd, brd + wdh,
+                 5 * brd + 4 * htr, 5 * brd + 5 * htr]
+feature_filt_bbox = [2 * brd + wdh, 2 * brd + wdh + wdc,
+                     brd, brd + htf]
+model_bbox = [3 * brd + wdh + wdc, 3 * brd + 2 * wdh + wdc,
+              brd, brd + htf]
+
+
+def visualize(brain):
     """
-    Draw a point that represents the activity of a signal it carries.
+    Render the current state of the brain in images.
+    
+    Parameters
+    ----------
+    brain: Brain
     """
-    r = np.minimum(np.maximum(.01, spacing / 24.), .03)
-    circle = plt.Circle(
-        (x, y),
-        r,
-        color=bt.copper_shadow,
-        zorder=6.,
-    )
-    plt.gca().add_artist(circle)
-    r_activity = activity * r * 2.
-    circle = plt.Circle(
-        (x, y),
-        r_activity,
-        color=bt.light_copper,
-        zorder=7. + activity,
-    )
-    plt.gca().add_artist(circle)
+    viz_sensing(brain)
+    viz_acting(brain)
 
-def plot_curve_activity(x_start, y_start, x_end, y_end, activity):
-    """
-    Draw a smooth curve connecting two points.
-    """
-    t = np.arange(0., np.pi , .01)
-    curve = np.cos(t)
-    offset = (y_start + y_end) / 2.
-    dilation = (x_end - x_start) / np.pi
-    scale = (
-        np.sign(x_start - x_end) *
-        (y_end - y_start) / 2.
-    )
-    plt.plot(
-        x_start + t * dilation,
-        offset + curve * scale,
-        color=bt.copper_shadow,
-        linewidth=.8,
-        zorder=2.,
-    )
-    plt.plot(
-        x_start + t * dilation,
-        offset + curve * scale,
-        color=bt.light_copper,
-        linewidth=activity,
-        zorder=activity + 2.,
-    )
 
-def plot_line_activity(x, y, activity):
+def viz_sensing(brain):
     """
-    Draw a line that represents the activity of a signal it carries.
+    Render the sensor information making its way up through the brain.
+
+    Parameters
+    ----------
+    brain: Brain
+    """
+    create_background()
+    x_inputs, i_to_viz_pre = preprocessor_viz.render(
+        brain.preprocessor, preprocessor_bbox, radius=rad)
+    x_commands, i_to_viz_post = postprocessor_viz.render(
+        brain.postprocessor, postprocessor_bbox, radius=rad)
+    # i_to_viz_pool_0 = np.concatenate((
+    #    i_to_viz_post + i_to_viz_pre.size, i_to_viz_pre))
+    i_to_viz_pool_0 = np.concatenate((
+        i_to_viz_pre + i_to_viz_post.size, i_to_viz_post))
+    # TODO: handle multiple zipties
+    x_pool_0 = np.concatenate((x_inputs, x_commands))
+    x_cables_0, i_to_viz_cables_0 = input_filter_viz.render(
+        brain.featurizer.filter,
+        filt_0_bbox,
+        x_pool_0,
+        i_to_viz_pool_0,
+        preprocessor_bbox[3],  # max y value of the Preprocessor
+        radius=rad)
+
+    finalize(brain, dpi=300)
+
+
+def viz_acting(brain):
+    """
+    Render the selected goal making its way down through the brain.
+
+    Parameters
+    ----------
+    brain: Brain
     """
 
-    plt.plot(
-        x, y,
-        color=bt.copper_shadow,
-        linewidth=.8,
-        zorder=2.,
-    )
-    plt.plot(
-        x, y,
-        color=bt.light_copper,
-        linewidth=activity,
-        zorder=activity + 2.,
-    )
 
-
-def plot_branch(
-    x_start, y_start, y_end,
-    activity,
-    branch_length,
-    is_leaf=False,
-    max_x=0.,
-):
+def create_background():
     """
-    Draw the branches of the discretized sensor trees.
-
-    @param x_start, y_start, y_end: floats
-        The start and end coordinates of the branch.
-    @param activity: float
-        The activity level of the branch, between 0 and 1.
-    @param branch_length: float
-        The x distance between generations in the tree.
-    @param is_leaf: boolean
-        Is this branch for a leaf node?
-    @param max_x: float
-        In the case of a leaf node, what is the x extent of the window.
+    Set up the backdrop for the visualization.
     """
-    x_end = x_start + branch_length
-    plot_curve_activity(x_start, y_start, x_end, y_end, activity)
-    #plot_line_activity(
-    #    [x_start, x_end, x_end],
-    #    [y_start, y_start, y_end],
-    #    activity,
-    #)
-    if is_leaf:
-        plot_line_activity([x_end, max_x], [y_end, y_end], activity)
+    fig = plt.figure(num=84782, figsize=(wd_, ht_))
+    fig.clf()
+    ax = plt.gca()
+    ax.add_patch(patches.Rectangle(
+        (0, 0),
+        wd_,
+        ht_,
+        facecolor=vt.dark_grey,
+        edgecolor='none',
+        zorder=-16.,
+    ))
+    # Preprocessor frame
+    vt.draw_frame(
+        bbox=preprocessor_bbox,
+        radius=rad,
+        facecolor=vt.dark_grey,
+        edgecolor=vt.copper,
+    )            
+    # Postprocessor frame
+    vt.draw_frame(
+        bbox=postprocessor_bbox,
+        radius=rad,
+        facecolor=vt.dark_grey,
+        edgecolor=vt.copper,
+    )            
+    # Cable filter 0 frame
+    vt.draw_frame(
+        bbox=filt_0_bbox,
+        radius=rad,
+        facecolor=vt.dark_grey,
+        edgecolor=vt.copper,
+    )            
+    # Ziptie 0 frame
+    vt.draw_frame(
+        bbox=ziptie_0_bbox,
+        radius=rad,
+        facecolor=vt.dark_grey,
+        edgecolor=vt.copper,
+    )            
+    # Cable filter 1 frame
+    vt.draw_frame(
+        bbox=cable_filt_1_bbox,
+        radius=rad,
+        facecolor=vt.dark_grey,
+        edgecolor=vt.copper,
+    )            
+    # Ziptie 1 frame
+    vt.draw_frame(
+        bbox=ziptie_1_bbox,
+        radius=rad,
+        facecolor=vt.dark_grey,
+        edgecolor=vt.copper,
+    )            
+    # feature filter frame
+    vt.draw_frame(
+        bbox=feature_filt_bbox,
+        radius=rad,
+        facecolor=vt.dark_grey,
+        edgecolor=vt.copper,
+    )            
+    # model frame
+    vt.draw_frame(
+        bbox=model_bbox,
+        radius=rad,
+        facecolor=vt.dark_grey,
+        edgecolor=vt.copper,
+    )            
+
+    return
 
 
+def finalize(brain, dpi=300, phase=1):
+    """
+    Complete any final formatting and save a copy of the figure.
+
+    Parameters
+    ----------
+    braind: Brain
+    dpi: int
+        The dots per inch for the saved figure.
+    phase: int
+        During each time step the brain does a lot and it's tough to get
+        it all into one image. To handle this, it is broken up into phases.
+        Phase 1 is sensing (an upward pass through the architecture) and
+        Phase 2 is acting ( a downward pass through the architecture).
+
+    """
+    plt.tight_layout()
+    # plt.axis('equal')
+    plt.axis('off')
+
+    filename = 'becca_{name}_{dpi:04d}_{age:08d}_{phase}.png'.format(
+        name=brain.name, age=brain.timestep, dpi=dpi, phase=phase)
+    pathname = os.path.join(brain.log_dir, filename)
+    plt.savefig(pathname, format='png', dpi=dpi)
+
+
+'''
 def brain_activity(brain=None, dpi=300):
     """
     Show what is going on in the brain at this time step.
@@ -141,7 +240,7 @@ def brain_activity(brain=None, dpi=300):
 
     frame_linewidth = .3
 
-    frame_color = bt.copper
+    frame_color = vt.copper
     highlight = .05
 
     fig = plt.figure(num=84782, figsize=(18., 9.))
@@ -151,12 +250,12 @@ def brain_activity(brain=None, dpi=300):
         (0., 0.),
         total_width,
         total_height,
-        facecolor=bt.copper_shadow,
+        facecolor=vt.copper_shadow,
         edgecolor='none',
         zorder=-16.,
     ))
 
-    def box(xmin, xmax, ymin, ymax, color='purple', linewidth=1.):
+    def box(xmin, xmax, ymin, ymax, color=, linewidth=1.):
         plt.plot(
             [xmin, xmin, xmax, xmax, xmin],
             [ymin, ymax, ymax, ymin, ymin],
@@ -191,114 +290,6 @@ def brain_activity(brain=None, dpi=300):
         linewidth=frame_linewidth,
     )
 
-    # Discretizer
-    xmin = xmax + inside_border
-    xmax = xmin + level_width
-    ymin = outside_border
-    ymax = total_height - outside_border
-    # Make the frame.
-    box(
-        xmin, xmax, ymin, ymax,
-        color=frame_color,
-        linewidth=frame_linewidth,
-    )
-    # Gather all the nodes, so they can be sorted by position.
-    # Start by setting aside positions for the actions at the top
-    i_actions = np.cumsum(np.ones(brain.n_actions))
-    positions = list(i_actions - 1e6)
-    # then collect positions from all the discretized sensors.
-    for discretizer in brain.discretizers:
-        positions += [node.position for node in
-                      discretizer.numeric_cats.get_list()]
-        positions.append(discretizer.position)
-        positions += [node.position for node in
-                      discretizer.string_cats.get_list()]
-    positions = np.array(positions)
-    sorted_positions = np.sort(positions)
-    y_spacing = np.minimum((ymax - ymin) / (float(len(positions)) + 1.),
-                           level_width)
-    node_y = ymax - y_spacing * np.cumsum(np.ones(len(positions)))
-
-    def get_y(node):
-        """
-        Find the y position that should be associated with a node.
-
-        @param node: an object with a position member
-            Both Nodes and Discretizers fit this description.
-
-        @return y_position: float
-        """
-        i_position = np.where(sorted_positions == node.position)
-        return node_y[i_position]
-
-    y_inputs = np.zeros(brain.max_n_inputs)
-    for i_action, activity in enumerate(brain.previous_actions):
-        y_inputs[i_action] = node_y[i_action]
-        plot_line_activity(
-            [xmin, xmax],
-            [node_y[i_action], node_y[i_action]],
-            activity,
-        )
-
-    for discretizer in brain.discretizers:
-        # Build trees.
-        n_depth = 1. + np.maximum(
-            discretizer.numeric_cats.depth,
-            discretizer.string_cats.depth)
-        branch_length = level_width / n_depth
-        sensor_y = get_y(discretizer)
-
-        def plot_tree(tree):
-            root_y = get_y(tree.root)
-            y_inputs[tree.root.i_input] = root_y
-            activity = brain.input_activities[tree.root.i_input]
-            plot_branch(xmin, sensor_y, root_y, activity, branch_length)
-            nodes = tree.get_list()
-            for node in nodes:
-                if node.lo_child is not None:
-                    x_start = xmin + (node.depth + 1.) * branch_length
-                    y_start = get_y(node)
-                    y_end = get_y(node.lo_child)
-                    y_inputs[node.lo_child.i_input] = y_end
-                    lo_activity = brain.input_activities[node.lo_child.i_input]
-                    plot_branch(
-                        x_start,
-                        y_start,
-                        y_end,
-                        lo_activity,
-                        branch_length,
-                        node.lo_child.leaf,
-                        xmax,
-                    )
-                    plot_point_activity(
-                        x_start + branch_length,
-                        y_end,
-                        lo_activity,
-                        y_spacing,
-                    )
-                    y_end = get_y(node.hi_child)
-                    y_inputs[node.hi_child.i_input] = y_end
-                    hi_activity = brain.input_activities[node.hi_child.i_input]
-                    plot_branch(
-                        x_start,
-                        y_start,
-                        y_end,
-                        hi_activity,
-                        branch_length,
-                        node.hi_child.leaf,
-                        xmax,
-                    )
-                    plot_point_activity(
-                        x_start + branch_length,
-                        y_end,
-                        hi_activity,
-                        y_spacing,
-                    )
-
-        # Build string branch.
-        plot_tree(discretizer.string_cats)
-        plot_tree(discretizer.numeric_cats)
-
     model_order = np.cumsum(np.ones(
         brain.model.feature_activities.size, dtype=np.int)) - 1
     # Start at index 2 to account for the fact that two additional actions are
@@ -328,7 +319,6 @@ def brain_activity(brain=None, dpi=300):
     i_last = i_start + input_order.size
     model_order[i_start:i_last] = input_order + i_start
     i_last = 2 + brain.max_n_inputs
-
 
     # Levels
     y_cables = y_inputs
@@ -519,14 +509,4 @@ def brain_activity(brain=None, dpi=300):
     filename = 'becca_{0}.png'.format(brain.name)
     pathname = os.path.join(brain.log_dir, filename)
     plt.savefig(pathname, format='png', dpi=dpi)
-
-
-def viz_sensing(brain):
-    """
-    Turn the most recent
-    """
-
-
-if __name__ == '__main__':
-    # brain_activity()
-    sense()
+'''
