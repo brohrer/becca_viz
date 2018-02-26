@@ -26,9 +26,8 @@ def render(postprocessor, bbox, radius=0, phase=0):
     -------
     x_commands: array of floats
         The absolute x positions of the command nodes.
-    i_to_viz: array of ints
-        The indices for ordering input activities to align with
-        the visualization.
+    i_to_viz: 2D array of ints
+        Mapping from commands to visualization order.
     """
 
     xmin, xmax, ymin, ymax = bbox
@@ -46,7 +45,7 @@ def render(postprocessor, bbox, radius=0, phase=0):
     x_actions = (xmin + radius + x_action_spacing *
                  np.cumsum(np.ones(n_commands)))
 
-    i_to_viz = np.arange(n_commands)
+    i_to_viz = np.eye(n_commands)
 
     for i_action, action in enumerate(postprocessor.actions):
         for j in range(n_commands_per_action):

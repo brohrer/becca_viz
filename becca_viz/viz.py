@@ -11,6 +11,7 @@ import becca_viz.viz_tools as vt
 import becca_viz.preprocessor_viz as preprocessor_viz
 import becca_viz.postprocessor_viz as postprocessor_viz
 import becca_viz.input_filter_viz as input_filter_viz
+# import becca_viz.ziptie_viz as ziptie_viz
 
 
 lwf = .3  # Linewidth of the frames
@@ -56,18 +57,6 @@ model_bbox = [3 * brd + wdh + wdc, 3 * brd + 2 * wdh + wdc,
 
 def visualize(brain):
     """
-    Render the current state of the brain in images.
-    
-    Parameters
-    ----------
-    brain: Brain
-    """
-    viz_sensing(brain)
-    viz_acting(brain)
-
-
-def viz_sensing(brain):
-    """
     Render the sensor information making its way up through the brain.
 
     Parameters
@@ -75,35 +64,34 @@ def viz_sensing(brain):
     brain: Brain
     """
     create_background()
-    x_inputs, i_to_viz_pre = preprocessor_viz.render(
+    x_inputs, preprocessor_viz_map = preprocessor_viz.render(
         brain.preprocessor, preprocessor_bbox, radius=rad)
-    x_commands, i_to_viz_post = postprocessor_viz.render(
+    x_commands, postprocessor_viz_map = postprocessor_viz.render(
         brain.postprocessor, postprocessor_bbox, radius=rad)
-    # i_to_viz_pool_0 = np.concatenate((
-    #    i_to_viz_post + i_to_viz_pre.size, i_to_viz_pre))
-    i_to_viz_pool_0 = np.concatenate((
-        i_to_viz_pre + i_to_viz_post.size, i_to_viz_post))
+    n_pre = preprocessor_viz_map.shape[0]
+    n_post = postprocessor_viz_map.shape[0]
+
+    pool_0_viz_map = np.block([
+        [np.zeros((n_post, n_pre)), postprocessor_viz_map],
+        [preprocessor_viz_map, np.zeros((n_pre, n_post))]])
     # TODO: handle multiple zipties
     x_pool_0 = np.concatenate((x_inputs, x_commands))
-    x_cables_0, i_to_viz_cables_0 = input_filter_viz.render(
+    x_cables_0, cables_0_viz_map = input_filter_viz.render(
         brain.featurizer.filter,
         filt_0_bbox,
         x_pool_0,
-        i_to_viz_pool_0,
+        pool_0_viz_map,
         preprocessor_bbox[3],  # max y value of the Preprocessor
         radius=rad)
+    # x_pool_1, pool_1_viz_map = ziptie_viz.render(
+    #     brain.featurizer.ziptie,
+    #     ziptie_0_bbox,
+    #     x_cables_0,
+    #     cables_0_viz_map,
+    #     filt_0_bbox[3],  # max y value of the InputFilter
+    #     radius=rad)
 
     finalize(brain, dpi=300)
-
-
-def viz_acting(brain):
-    """
-    Render the selected goal making its way down through the brain.
-
-    Parameters
-    ----------
-    brain: Brain
-    """
 
 
 def create_background():
