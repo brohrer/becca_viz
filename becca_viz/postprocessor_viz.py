@@ -45,7 +45,7 @@ def render(postprocessor, bbox, radius=0, phase=0):
     x_actions = (xmin + radius + x_action_spacing *
                  np.cumsum(np.ones(n_commands)))
 
-    i_to_viz = np.eye(n_commands)
+    i_to_viz = np.eye(n_commands, dtype=np.int)
 
     for i_action, action in enumerate(postprocessor.actions):
         for j in range(n_commands_per_action):

@@ -11,7 +11,7 @@ import becca_viz.viz_tools as vt
 import becca_viz.preprocessor_viz as preprocessor_viz
 import becca_viz.postprocessor_viz as postprocessor_viz
 import becca_viz.input_filter_viz as input_filter_viz
-# import becca_viz.ziptie_viz as ziptie_viz
+import becca_viz.ziptie_viz as ziptie_viz
 
 
 lwf = .3  # Linewidth of the frames
@@ -72,8 +72,8 @@ def visualize(brain):
     n_post = postprocessor_viz_map.shape[0]
 
     pool_0_viz_map = np.block([
-        [np.zeros((n_post, n_pre)), postprocessor_viz_map],
-        [preprocessor_viz_map, np.zeros((n_pre, n_post))]])
+        [np.zeros((n_post, n_pre), dtype=np.int), postprocessor_viz_map],
+        [preprocessor_viz_map, np.zeros((n_pre, n_post), dtype=np.int)]])
     # TODO: handle multiple zipties
     x_pool_0 = np.concatenate((x_inputs, x_commands))
     x_cables_0, cables_0_viz_map = input_filter_viz.render(
@@ -83,13 +83,13 @@ def visualize(brain):
         pool_0_viz_map,
         preprocessor_bbox[3],  # max y value of the Preprocessor
         radius=rad)
-    # x_pool_1, pool_1_viz_map = ziptie_viz.render(
-    #     brain.featurizer.ziptie,
-    #     ziptie_0_bbox,
-    #     x_cables_0,
-    #     cables_0_viz_map,
-    #     filt_0_bbox[3],  # max y value of the InputFilter
-    #     radius=rad)
+    x_pool_1, pool_1_viz_map = ziptie_viz.render(
+        brain.featurizer.ziptie,
+        ziptie_0_bbox,
+        x_cables_0,
+        cables_0_viz_map,
+        filt_0_bbox[3],  # max y value of the InputFilter
+        radius=rad)
 
     finalize(brain, dpi=300)
 

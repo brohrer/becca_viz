@@ -21,91 +21,63 @@ def render(preprocessor, bbox, radius=0):
 
     Returns
     -------
-    x_inputs: array of floats
+    input_x_viz: array of floats
         The absolute x positions of the input nodes.
-    i_to_viz: array of ints
-        The indices for ordering input activities to align with
-        the visualization.
+    input_viz_map: 2D array of ints
+        A map from the order the inputs occur to the visualization order.
     """
-
     xmin, xmax, ymin, ymax = bbox
     frame_width = xmax - xmin
     frame_height = ymax - ymin
-    # Collect positions from all the discretized sensors.
-    positions = []
-    i_pool = []
-    for discretizer in preprocessor.discretizers:
-        num_tree_list = discretizer.numeric_cats.get_list()
-        str_tree_list = discretizer.string_cats.get_list()
-        positions += [node.position for node in num_tree_list]
-        positions.append(discretizer.position)
-        positions += [node.position for node in str_tree_list]
-        i_pool += [node.i_input for node in num_tree_list]
-        i_pool.append(-1)
-        i_pool += [node.i_input for node in str_tree_list]
-    positions = np.array(positions)
-    i_pool = np.array(i_pool)
 
-    n_pool = i_pool.size
-
-    # pool_order = np.argsort(i_pool)
-    # pool_by_pool = i_pool[pool_order]
-    # positions_by_pool = positions[pool_order]
-    # pool_to_viz_order = np.argsort(positions_by_pool)
-    # pool_to_viz[(np.arange(n_pool), pool_to_viz_order)] = 1
-    position_order = np.argsort(positions)
-    positions_by_positions = positions[position_order]
-    pool_by_positions = i_pool[position_order]
-    i_active_positions = np.where(pool_by_positions >= 0)[0]
-    active_pool_by_positions = pool_by_positions[i_active_positions]
-    active_positions_by_positions = positions_by_positions[i_active_positions]
-    pool_order = np.argsort(active_pool_by_positions)
-    position_order = np.argsort(np.argsort(active_positions_by_positions))
-    pool_to_viz = np.zeros((i_active_positions.size, i_active_positions.size))
-    pool_to_viz[(pool_order, position_order)] = 1
+    n_inputs = preprocessor.n_inputs
+    n_disc = len(preprocessor.discretizers)
+    # The number of inputs plus the number of discretizers.
+    n_input_d = n_inputs + n_disc 
+    positions = np.zeros(n_input_d)
 
     x_spacing = (frame_width - 2 * radius) / float(len(positions) + 1)
     node_x = xmin + radius + x_spacing * np.cumsum(np.ones(len(positions)))
-    active_node_x = node_x[i_active_positions]
 
-    def get_x(node):
-        """
-        Find the x position that should be associated with a node.
-        
-        Parameters
-        ----------
-        node: an object with a position member
-            Both Nodes and Discretizers fit this description.
+    # Get the x positions of all the nodes.
+    # This needs to be in the same order as activities.
+    i_disc = 0
+    for i_disc, discretizer in enumerate(preprocessor.discretizers):
+        positions[i_disc] = discretizer.position
+        num_tree_list = discretizer.numeric_cats.get_list()
+        str_tree_list = discretizer.string_cats.get_list()
+        for node in num_tree_list:
+            positions[node.i_input + n_disc] = node.position
+        for node in str_tree_list:
+            positions[node.i_input + n_disc] = node.position
 
-        Returns
-        -------
-        x_position: float
-        """
-        i_position = np.where(positions_by_positions == node.position)
-        return node_x[i_position]
+    position_order = np.argsort(positions)
+    i_input_d_by_position = np.arange(n_input_d)[position_order]
+    x_by_i_input_d = node_x[np.argsort(i_input_d_by_position)]
+    discretizer_x = x_by_i_input_d[:n_disc]
+    input_x = x_by_i_input_d[n_disc:]
+    input_viz_map = np.zeros((n_inputs, n_inputs), dtype=np.int)
+    input_viz_map[np.argsort(input_x), np.arange(n_inputs)] = 1
+    input_x_viz = np.matmul(input_x, input_viz_map)
 
-    x_inputs = np.zeros(preprocessor.n_inputs)
-    
-    for discretizer in preprocessor.discretizers:
+    for i_discretizer, discretizer in enumerate(preprocessor.discretizers):
         # Build trees.
         n_depth = 1. + np.maximum(
             discretizer.numeric_cats.depth,
             discretizer.string_cats.depth)
         branch_length = frame_height / n_depth
-        sensor_x = get_x(discretizer)
+        sensor_x = discretizer_x[i_discretizer]
 
         def plot_tree(tree):
-            root_x = get_x(tree.root)
-            x_inputs[tree.root.i_input] = root_x
+            root_x = input_x[tree.root.i_input]
             activity = preprocessor.input_activities[tree.root.i_input]
             plot_branch(sensor_x, root_x, ymin, activity, branch_length)
             nodes = tree.get_list()
             for node in nodes:
                 if node.lo_child is not None:
                     y_start = ymin + (node.depth + 1.) * branch_length
-                    x_start = get_x(node)
-                    x_end = get_x(node.lo_child)
-                    x_inputs[node.lo_child.i_input] = x_end
+                    x_start = input_x[node.i_input]
+                    x_end = input_x[node.lo_child.i_input]
                     lo_activity = preprocessor.input_activities[
                         node.lo_child.i_input]
                     plot_branch(
@@ -114,8 +86,8 @@ def render(preprocessor, bbox, radius=0):
                         y_start,
                         lo_activity,
                         branch_length,
-                        node.lo_child.leaf,
-                        ymax,
+                        is_leaf=node.lo_child.leaf,
+                        max_y=ymax,
                     )
                     vt.plot_point_activity(
                         x_end,
@@ -123,8 +95,7 @@ def render(preprocessor, bbox, radius=0):
                         lo_activity,
                         x_spacing,
                     )
-                    x_end = get_x(node.hi_child)
-                    x_inputs[node.hi_child.i_input] = x_end
+                    x_end = input_x[node.hi_child.i_input]
                     hi_activity = preprocessor.input_activities[
                         node.hi_child.i_input]
                     plot_branch(
@@ -133,8 +104,8 @@ def render(preprocessor, bbox, radius=0):
                         y_start,
                         hi_activity,
                         branch_length,
-                        node.hi_child.leaf,
-                        ymax,
+                        is_leaf=node.hi_child.leaf,
+                        max_y=ymax,
                     )
                     vt.plot_point_activity(
                         x_end,
@@ -147,7 +118,8 @@ def render(preprocessor, bbox, radius=0):
         plot_tree(discretizer.string_cats)
         plot_tree(discretizer.numeric_cats)
 
-    return active_node_x, pool_to_viz
+    return input_x_viz, input_viz_map
+
 
 def plot_branch(
     x_start, x_end,
