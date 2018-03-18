@@ -1,87 +1,78 @@
-"""
-Visualize the featurizer for reporting and debugging.
-"""
-
-from __future__ import print_function
 import os
 
-from mpl_toolkits.axes_grid1 import ImageGrid
-#import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 
+import becca_viz.viz_tools as vt
 
-def visualize(featurizer, brain, world):
+
+def render(featurizer, bbox, viz_maps, radius=0):
     """
-    Show the current state of the featurizer.
-
+    y_pool_feature, feature_viz_map = featurizer_viz.render(
+    
     Parameters
     ----------
-    brain : Brain
-        The number of actions in the brain is referenced
-        to customize the display.
     featurizer : Featurizer
-        The featurizer being visualized.
+    bbox: list of floats
+        In the format [xmin, xmax, ymin, ymax]
+    viz_maps: list of 2D arrays of ints
+        Maps between cable candidate pools and their visualization order.
+    radius: float
+    
+    Returns
+    -------
+    y_pool_feature: array of floats
+        The absolute positions of each member of the feature pool.
+    feature_viz_map: 2D array of floats
+        Map between the feature pool and their visualization order.
     """
-    # activity_threshold : the level at which we can ignore
-    # an element's activity in order to simplify display.
-    activity_threshold = .01
-    print(featurizer.name)
+    xmin, xmax, ymin, ymax = bbox
+    frame_width = xmax - xmin
+    frame_height = ymax - ymin
 
-    print("Input activities")
-    for i_input, activity in enumerate(featurizer.input_activities):
-        if activity > activity_threshold:
-            print(" ".join(["input", str(i_input), ":",
-                            "activity ", str(activity)]))
+    print(np.where(viz_maps[0] == 1))
+    print(np.where(viz_maps[1] == 1))
+    if viz_maps[-1] is None:
+        viz_maps = viz_maps[:-1]
+    block_rows = []
+    for i_map in np.arange(len(viz_maps), dtype=np.int):
+        block_row = []
+        mrows, mcols = viz_maps[i_map].shape
+        for j_map in np.arange(len(viz_maps), dtype=np.int):
+            nrows, ncols = viz_maps[j_map].shape
+            if i_map == j_map:
+                block_row.append(np.fliplr(viz_maps[i_map]))
+            else:
+                block_row.append(np.zeros((mrows, ncols), dtype=np.int))
+        block_rows.append(block_row) 
 
-    N = int(np.ceil(featurizer.max_num_features ** .5))
-    M = int(np.ceil(featurizer.max_num_features / float(N)))
-    grid_shape = (N, M)
+    map_AB = np.block(block_rows).T
+    print(np.where(map_AB == 1))
+    map_BC = featurizer.mapping
+    order_CD = np.argsort(np.argsort(np.matmul(
+        np.arange(map_AB.shape[0]),
+        np.matmul(map_AB, map_BC))))
+    n_D = map_BC.shape[1]
+    map_CD = np.zeros((n_D, n_D), dtype=np.int)
+    map_CD[np.arange(n_D, dtype=np.int), order_CD] = 1
+    
+    activities_B = []
+    for level_activities in featurizer.activities:
+        activities_B += list(level_activities)
+    activities_B = np.array(activities_B)
+    activities_D = np.matmul(activities_B, np.matmul(map_BC, map_CD))
+    
+    y_spacing = (frame_height - 2 * radius) / (n_D + 1)
+    y_D = np.linspace(
+        ymin + radius + y_spacing, 
+        ymax - radius - y_spacing,
+        num=n_D,
+        endpoint=True,
+    )
 
-    # fig : matplotlob Figure
-    #     A single figure that summarizes all the features
-    #     that have been created.
-    fignum = 85673
-    # Allow a 9 x 9 in plot for each feature.
-    # This helps line thicknesses to render properly.
-    fig = plt.figure(fignum, grid_shape)
-    plt.clf()
-    # ax_grid : list of matplotlib Axis
-    #     All the axes in the visualization figure.
-    ax_grid = ImageGrid(
-        fig,
-        111,  # similar to subplot(111)
-        nrows_ncols=grid_shape, # creates an NxM grid of axes
-        axes_pad=0.1,  # pad between axes in inches.
-        )
-    for axis in ax_grid:
-        plt.sca(axis)
-        plt.axis("off")
-    try:
-        i_feature = 0
+    for i_D, activity in enumerate(activities_D):
+        # vt.plot_curve_activity_horiz(
+        #     y_start, y_end, xmin, xmax, activity, start=.3)
+        vt.plot_point_activity(xmin, y_D[i_D], activity, y_spacing)
 
-        # Render the features.
-        for i_feature in range(featurizer.max_num_features):
-            feature_activities = np.zeros(featurizer.max_num_features)
-            feature_activities[i_feature] = 1.
-            input_activities = featurizer.defeaturize(feature_activities)
-            if np.where(input_activities > 0.)[0].size > 0:
-                actions = input_activities[:brain.num_actions]
-                sensors = input_activities[brain.num_actions:]
-                plt.sca(ax_grid[i_feature])
-                plt.cla()
-                world.render_sensors_actions(sensors, actions)
-            i_feature += 1
-
-        fig.show()
-        fig.canvas.draw()
-
-        # Save a copy of the plot.
-        filename = 'featurizer_features_{0}.png'.format(brain.name)
-        pathname = os.path.join(brain.log_dir, filename)
-        plt.figure(fignum)
-        plt.savefig(pathname, format='png', dpi=600)
-
-    except:
-        print('Featurizer failed to render features.')
-        featurizer.ziptie.visualize()
+    return y_D, map_CD

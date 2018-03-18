@@ -1,173 +1,285 @@
-"""
-Visualization for the model.
-"""
-
-from __future__ import print_function
 import os
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 
+import becca_viz.viz_tools as vt
 
-def set_up_visualization(model, brain):
+
+n_image_rows = 4
+n_image_cols = 3
+
+def render(model, bbox, viz_map, radius=0):
     """
-    Initialize the visualization of the model.
 
-    To make the visualization interpretable, there are some
-    annotations and visual guides added.
-
-    Parameters
-    ----------
-    brain : Brain
-        The number of actions in the brain is referenced
-        to customize the display.
-    model : Model
-        The model being visualized.
     """
-    # Prepare visualization.
-    plt.bone()
-    # fig : matplotlib figure
-    #     The figure in which a visual representation of the results
-    #     will be presented.
-    # ax_curiosities,
-    # ax_rewards,
-    # ax_ocurrences : matplotlib axes
-    #     The axes in which each of these 2D arrays will be rendered
-    #     as images.
-    plt.figure(num=73857, figsize=(9, 9))
-    plt.clf()
-    model.fig, (
-        (model.ax_rewards, model.ax_curiosities),
-        (model.ax_activities, model.ax_occurrences)) = (
-            plt.subplots(2, 2, num=73857))
+    xmin, xmax, ymin, ymax = bbox
+    frame_width = xmax - xmin
+    frame_height = ymax - ymin
 
-    def dress_axes(ax):
-        """
-        Decorate the axes appropriately with visual cues.
-        """
-        plt.sca(ax)
-        ax.add_patch(patches.Rectangle(
-            (-.5, - .5),
-            model.num_features,
-            2.,
-            facecolor='green',
-            edgecolor='none',
-            alpha=.16))
-        ax.add_patch(patches.Rectangle(
-            (-.5, -.5),
-            2.,
-            model.num_features,
-            facecolor='green',
-            edgecolor='none',
-            alpha=.16))
-        ax.add_patch(patches.Rectangle(
-            (-.5, brain.num_actions + 2. -.5),
-            model.num_features,
-            brain.num_sensors,
-            facecolor='green',
-            edgecolor='none',
-            alpha=.16))
-        ax.add_patch(patches.Rectangle(
-            (brain.num_actions + 2. -.5, -.5),
-            brain.num_sensors,
-            model.num_features,
-            facecolor='green',
-            edgecolor='none',
-            alpha=.16))
-        ax.plot(
-            [-.5, model.num_features - .5],
-            [2. - .5, 2. - .5],
-            color='blue',
-            linewidth=.2)
-        ax.plot(
-            [2. - .5, 2. - .5],
-            [-.5, model.num_features - .5],
-            color='blue',
-            linewidth=.2)
-        ax.plot(
-            [-.5, model.num_features - .5],
-            [brain.num_actions + 2. - .5, brain.num_actions + 2. - .5],
-            color='blue',
-            linewidth=.2)
-        ax.plot(
-            [brain.num_actions + 2. - .5, brain.num_actions + 2. - .5],
-            [-.5, model.num_features - .5],
-            color='blue',
-            linewidth=.2)
-        ax.plot(
-            [-.5, model.num_features - .5],
-            [brain.num_sensors + brain.num_actions + 2. - .5,
-             brain.num_sensors + brain.num_actions + 2. - .5],
-            color='blue',
-            linewidth=.2)
-        ax.plot(
-            [brain.num_sensors + brain.num_actions + 2. - .5,
-             brain.num_sensors + brain.num_actions + 2. - .5],
-            [-.5, model.num_features - .5],
-            color='blue',
-            linewidth=.2)
-        plt.xlim([-.5, model.num_features - .5])
-        plt.ylim([-.5, model.num_features - .5])
-        ax.invert_yaxis()
+    # i_viz = np.matmul(np.arange(viz_map.shape[0], dtype=np.int), viz_map)
+    # Handle the model's two internal features.
+    # i_viz = np.concatenate((np.array([0, 1], dtype=np.int), i_viz + 2))
+    # i_viz = np.concatenate((np.array([1], dtype=np.int), i_viz + 2))
+    # i_viz += 2
+    # n_viz = viz_map.shape[0]
 
-    dress_axes(model.ax_rewards)
-    dress_axes(model.ax_curiosities)
-    dress_axes(model.ax_activities)
-    dress_axes(model.ax_occurrences)
+    y_gap = radius
+    im_height = (frame_height - (n_image_rows + 1) * y_gap) / n_image_rows
+    x_gap = (frame_width - n_image_cols * im_height ) / (n_image_cols + 1)
+    
+    rewards = (model.feature_activities[:, np.newaxis] *
+               model.prefix_rewards)[2:, 2:]
+    viz_rewards = vt.nd_map(rewards, viz_map)
+    vt.scatter_2D(
+        viz_rewards,
+        x0=xmin + 2 * x_gap + im_height,
+        y0=ymin + (n_image_rows - 1) * y_gap +
+            (n_image_rows - 1) * im_height,
+        width=im_height,
+        height=im_height,
+    )
 
+    curiosities = (model.feature_activities[:, np.newaxis] *
+               model.prefix_curiosities)[2:, 2:]
+    # viz_curiosities = np.matmul(np.matmul(viz_map.T, curiosities), viz_map)
+    viz_curiosities = vt.nd_map(curiosities, viz_map)
+    vt.scatter_2D(
+        curiosities,
+        x0=xmin + x_gap,
+        y0=ymin + (n_image_rows - 1) * y_gap +
+            (n_image_rows - 1) * im_height,
+        width=im_height,
+        height=im_height,
+    )
 
-def visualize(model, brain):
-    """
-    Make a picture of the model.
+    # TODO: weight all by feature activities
+    sequences = (model.feature_activities[:, np.newaxis, np.newaxis] *
+                 model.sequence_likelihoods)
+    sequences = np.moveaxis(sequences, [0, 1, 2], [1, 2, 0])
+    sequences_viz = vt.nd_map(sequences[2:, 2:, 2:], viz_map)
+    # Goal direction is x.
+    # Post feature direction is y.
+    viz_futures = np.max(sequences_viz, axis=2)
 
-    Parameters
-    ----------
-    brain : Brain
-        The brain that this model belongs to.
-    model : Model
-        The model being visualized.
-    """
-    # Show prefix_rewards.
-    ax = model.ax_rewards
-    ax.imshow(
-        model.prefix_rewards, vmin=-1., vmax=1., interpolation='nearest')
-    ax.set_title('Rewards')
-    ax.set_ylabel('Features')
+    prefix_activities = vt.nd_map(model.prefix_activities[2:, 2:], viz_map)
+    vt.scatter_2D(
+        prefix_activities,
+        x0=xmin + x_gap,
+        y0=ymin + (n_image_rows - 2) * y_gap +
+            (n_image_rows - 2) * im_height,
+        width=im_height,
+        height=im_height,
+    )
 
-    # Show prefix_curiosities.
-    ax = model.ax_curiosities
-    ax.imshow(
-        model.prefix_curiosities, vmin=0., vmax=1., interpolation='nearest')
-    ax.set_title('Curiosities')
-    ax.set_xlabel('Goals')
+    vt.scatter_2D(
+        viz_futures,
+        x0=xmin + 2 * x_gap + im_height,
+        y0=ymin + (n_image_rows - 2) * y_gap +
+            (n_image_rows - 2) * im_height,
+        width=im_height,
+        height=im_height,
+    )
 
-    # Show prefix_activities.
-    ax = model.ax_activities
-    ax.imshow(
-        model.prefix_activities,
-        #model.prefix_credit,
-        vmin=0.,
-        vmax=1.,
-        interpolation='nearest')
-    ax.set_title('Activities')
-    ax.set_xlabel('Goals')
-    ax.set_ylabel('Features')
+    vt.scatter_3D(
+        sequences_viz,
+        x0=xmin + x_gap,
+        y0=ymin + y_gap,
+        width= 2 * im_height + x_gap,
+        height=2 * im_height + y_gap,
+    )
 
-    # Show prefix_occurrences.
-    ax = model.ax_occurrences
-    log_occurrences = np.log10(model.prefix_occurrences + 1.)
-    ax.imshow(log_occurrences, interpolation='nearest')
-    ax.set_title('Occurrences, max = {0}'.format(
-        int(10 ** np.max(log_occurrences))))
-    ax.set_xlabel('Goals')
+    # conditional_rewards_viz = np.matmul(
+    #     model.conditional_rewards, viz_map)
+    conditional_rewards_viz = vt.nd_map(
+        model.conditional_rewards[2:], viz_map)
+    vt.scatter_1D(
+        conditional_rewards_viz,
+        x0=xmin + 3 * x_gap + 2 * im_height,
+        y0=ymin + 4 * y_gap + 3.5 * im_height,
+        width=im_height,
+    )
 
-    model.fig.show()
-    model.fig.canvas.draw()
+    # conditional_curiosities_viz = np.matmul(
+    conditional_curiosities_viz = vt.nd_map(
+        model.conditional_curiosities[2:], viz_map)
+    vt.scatter_1D(
+        conditional_curiosities_viz,
+        x0=xmin + 3 * x_gap + 2 * im_height,
+        y0=ymin + 3 * y_gap + 2.5 * im_height,
+        width=im_height,
+    )
 
-    # Save a copy of the plot.
-    filename = 'model_history_{0}.png'.format(brain.name)
-    pathname = os.path.join(brain.log_dir, filename)
-    plt.figure(73857)
-    plt.savefig(pathname, format='png', dpi=300)
+    # goal_activities_viz = np.matmul(model.goal_activities, viz_map)
+    goal_activities_viz = vt.nd_map(
+        model.goal_activities[2:], viz_map)
+    vt.scatter_1D(
+        goal_activities_viz,
+        x0=xmin + 3 * x_gap + 2 * im_height,
+        y0=ymin + 2 * y_gap + 1.5 * im_height,
+        width=im_height,
+    )
+
+    conditional_goal_rewards = np.max(
+        model.conditional_predictions *
+        model.goal_activities[np.newaxis, :], axis=1)
+    # conditional_goal_rewards_viz = np.matmul(
+    conditional_goal_rewards_viz = vt.nd_map(
+        conditional_goal_rewards[2:], viz_map)
+    vt.scatter_1D(
+        conditional_goal_rewards_viz,
+        x0=xmin + 3 * x_gap + 2 * im_height,
+        y0=ymin + 1 * y_gap + 0.5 * im_height,
+        width=im_height,
+    )
     return
+
+
+def labels(bbox, radius=0):
+    """
+    Add model-specific labels to the labeled visualization.
+    """
+    xmin, xmax, ymin, ymax = bbox
+    frame_width = xmax - xmin
+    frame_height = ymax - ymin
+
+    y_gap = radius
+    im_height = (frame_height - (n_image_rows + 1) * y_gap) / n_image_rows
+    x_gap = (frame_width - n_image_cols * im_height ) / (n_image_cols + 1)
+
+    label_text(
+        text='Active\nreward\nprefixes',
+        x=xmin + 2 * x_gap + im_height,
+        y=ymin + (n_image_rows - 0) * y_gap + (n_image_rows - .5) * im_height,
+    )
+
+    label_text(
+        text='Active\ncuriosity\nprefixes',
+        x=xmin + x_gap,
+        y=ymin + (n_image_rows - 0) * y_gap + (n_image_rows - .5) * im_height,
+    )
+
+    label_text(
+        text='Prefix\nactivities',
+        x=xmin + x_gap,
+        y=ymin + (n_image_rows - 1) * y_gap + (n_image_rows - 1.5) * im_height,
+    )
+
+    label_text(
+        text='Active\nfutures',
+        x=xmin + 2 * x_gap + im_height,
+        y=ymin + (n_image_rows - 1) * y_gap + (n_image_rows - 1.5) * im_height,
+    )
+
+    label_text(
+        text='Active\nsequences',
+        x=xmin + x_gap,
+        y=ymin + 2 * y_gap + im_height,
+    )
+
+    label_text(
+        text='Conditional\nrewards',
+        x=xmin + 3 * x_gap + 2 * im_height,
+        y=ymin + 4 * y_gap + 3.5 * im_height,
+    )
+    
+    label_text(
+        text='Conditional\ncuriosities',
+        x=xmin + 3 * x_gap + 2 * im_height,
+        y=ymin + 3 * y_gap + 2.5 * im_height,
+    )
+    
+    label_text(
+        text='Goal\nactivities',
+        x=xmin + 3 * x_gap + 2 * im_height,
+        y=ymin + 2 * y_gap + 1.5 * im_height,
+    )
+    
+    label_text(
+        text='Goal\nrewards',
+        x=xmin + 3 * x_gap + 2 * im_height,
+        y=ymin + 1 * y_gap + 0.5 * im_height,
+    )
+    
+
+def label_text(text='', x=0, y=0):
+    """
+    Craft the label text.
+    """
+    plt.text(
+        x,
+        y,
+        text,
+        fontsize=12,
+        color=vt.copper,
+        verticalalignment="center",
+        family="sans-serif",
+    )
+
+
+def render_state(model, bbox, viz_map, radius=0):
+    """
+
+    """
+    xmin, xmax, ymin, ymax = bbox
+    frame_width = xmax - xmin
+    frame_height = ymax - ymin
+
+    i_viz = np.matmul(viz_map, np.arange(viz_map.shape[0], dtype=np.int))
+    # Handle the model's two internal features.
+    i_viz = np.concatenate((np.array([0, 1], dtype=np.int), i_viz + 2))
+
+    y_gap = radius
+    n_image_rows = 4
+    im_height = (frame_height - (n_image_rows + 1) * y_gap) / n_image_rows
+    x_gap = (frame_width - 3 * im_height ) / 3
+
+    vt.scatter_2D(
+        model.prefix_rewards[i_viz, :][:, i_viz],
+        x0=xmin + 2 * x_gap + im_height,
+        y0=ymin + (n_image_rows - 1) * y_gap + (n_image_rows - 1) * im_height,
+        width=im_height,
+        height=im_height,
+    )
+
+    vt.scatter_2D(
+        model.prefix_curiosities[i_viz, :][:, i_viz],
+        x0=xmin + x_gap,
+        y0=ymin + (n_image_rows - 1) * y_gap + (n_image_rows - 1) * im_height,
+        width=im_height,
+        height=im_height,
+    )
+
+    # TODO: weight all by feature activities
+    sequences = model.sequence_occurrences / (model.prefix_occurrences + 1)
+    # Goal direction is x.
+    # Post feature direction is y.
+    futures = np.max(sequences, axis=0)
+
+    vt.scatter_2D(
+        model.prefix_uncertainties[i_viz, :][:, i_viz],
+        x0=xmin + x_gap,
+        y0=ymin + (n_image_rows - 2) * y_gap + (n_image_rows - 2) * im_height,
+        width=im_height,
+        height=im_height,
+    )
+
+    vt.scatter_2D(
+        futures[i_viz, :][:, i_viz],
+        x0=xmin + 2 * x_gap + im_height,
+        y0=ymin + (n_image_rows - 2) * y_gap + (n_image_rows - 2) * im_height,
+        width=im_height,
+        height=im_height,
+    )
+
+    sequences_viz = np.moveaxis(
+        sequences[i_viz, :, :][:, i_viz, :][:, :, i_viz],
+        [0, 1, 2], [2, 1, 0])
+    vt.scatter_3D(
+        sequences_viz,
+        x0=xmin + x_gap,
+        y0=ymin + y_gap,
+        width= 2 * im_height + x_gap,
+        height=2 * im_height + y_gap,
+    )

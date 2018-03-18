@@ -47,15 +47,12 @@ def render(postprocessor, bbox, radius=0, phase=0):
 
     i_to_viz = np.eye(n_commands, dtype=np.int)
 
+    # Show the upward, sensed commands from the previous time step.
     for i_action, action in enumerate(postprocessor.actions):
         for j in range(n_commands_per_action):
             i_command = i_action * n_commands_per_action + j
-            if phase == 0:
-                command_activity = postprocessor.consolidated_commands[
-                    i_command]
-            elif phase == 1:
-                command_activity = postprocessor.command_activities[
-                    i_command]
+            command_activity = postprocessor.previous_commands[
+                i_command]
 
             vt.plot_point_activity(
                 x_commands[i_command],
@@ -70,10 +67,35 @@ def render(postprocessor, bbox, radius=0, phase=0):
                 ymax,
                 command_activity,
             )
-        vt.plot_point_activity(
-            x_actions[i_action],
-            ymin,
-            action,
-            x_action_spacing,
-        )
+
+    offset = (x_actions[1] - x_actions[0]) / 10
+    # Show the downward commands, to be executed during the next time step.
+    for i_action, action in enumerate(postprocessor.actions):
+        for j in range(n_commands_per_action):
+            i_command = i_action * n_commands_per_action + j
+            command_activity = postprocessor.command_activities[
+                i_command]
+            if command_activity > .02:
+                vt.plot_point_activity(
+                    x_commands[i_command] + offset,
+                    ymax,
+                    command_activity,
+                    x_command_spacing,
+                    activity_color=vt.oxide,
+                )
+                vt.plot_curve_activity(
+                    x_actions[i_action] + offset,
+                    x_commands[i_command] + offset,
+                    ymin,
+                    ymax,
+                    command_activity,
+                    activity_color=vt.oxide,
+                )
+                vt.plot_point_activity(
+                    x_actions[i_action] + offset,
+                    ymin,
+                    action,
+                    x_action_spacing,
+                    activity_color=vt.oxide,
+                )
     return x_commands, i_to_viz

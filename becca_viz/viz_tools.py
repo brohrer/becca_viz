@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.colors as colors
 import matplotlib.patches as patches
 
 # Colors for plotting
@@ -7,12 +8,17 @@ dark_grey = (0.05, 0.05, 0.05)
 light_grey = (0.9, 0.9, 0.9)
 red = (0.9, 0.3, 0.3)
 # Becca pallette
-copper_highlight = (253./255., 249./255., 240./255.)
-light_copper = (242./255., 166./255., 108./255.)
-copper = (175./255., 102./255, 53./255.)
-dark_copper = (132./255., 73./255., 36./255.)
-copper_shadow = (25./255., 22./255, 20./255.)
-oxide = (20./255., 120./255., 150./255.)
+copper_highlight = (253/255, 249/255, 240/255)
+light_copper = (242/255, 166/255, 108/255)
+copper = (175/255, 102/255, 53/255)
+dark_copper = (132/255, 73/255, 36/255)
+copper_shadow = (25/255, 22/255, 20/255)
+oxide = (20/255, 120/255, 150/255)
+
+cmap_1 = colors.LinearSegmentedColormap.from_list(
+    "", ["black", light_copper])
+cmap_2 = colors.LinearSegmentedColormap.from_list(
+    "", [oxide, "black", light_copper])
 
 
 def draw_frame(
@@ -203,7 +209,12 @@ def plot_arc(
     plt.plot(x, y, color=color, linewidth=linewidth, zorder=zorder)
 
 
-def plot_point_activity(x, y, activity, spacing):
+def plot_point_activity(
+    x, y,
+    activity,
+    spacing,
+    activity_color=light_copper,
+):
     """
     Draw a point that represents the activity of a signal it carries.
     """
@@ -219,7 +230,7 @@ def plot_point_activity(x, y, activity, spacing):
     circle = plt.Circle(
         (x, y),
         r_activity,
-        color=light_copper,
+        color=activity_color,
         zorder=7. + activity,
     )
     plt.gca().add_artist(circle)
@@ -233,8 +244,6 @@ def plot_curve_activity(
 ):
     """
     Draw a smooth curve connecting two points.
-
-    
     """
     t = np.arange(0., np.pi , .01)
     curve = np.cos(t)
@@ -260,6 +269,39 @@ def plot_curve_activity(
     )
 
 
+def plot_curve_activity_horiz(
+    y_start, y_end, x_start, x_end,
+    activity,
+    shadow_color=copper_shadow,
+    activity_color=light_copper,
+):
+    """
+    Draw a smooth curve connecting two points.
+    """
+    t = np.arange(0., np.pi , .01)
+    curve = np.cos(t)
+    offset = (y_start + y_end) / 2.
+    dilation = (x_end - x_start) / np.pi
+    scale = (
+        np.sign(x_start - x_end) *
+        (y_end - y_start) / 2.
+    )
+    plt.plot(
+        x_start + t * dilation,
+        offset + curve * scale,
+        color=shadow_color,
+        linewidth=.8,
+        zorder=2.,
+    )
+    plt.plot(
+        x_start + t * dilation,
+        offset + curve * scale,
+        color=activity_color,
+        linewidth=activity,
+        zorder=activity + 2.,
+    )
+
+
 def plot_line_activity(x, y, activity):
     """
     Draw a line that represents the activity of a signal it carries.
@@ -278,3 +320,159 @@ def plot_line_activity(x, y, activity):
         zorder=activity + 2.,
     )
 
+
+def scatter(x, y,c):
+    cb = c.copy()
+    cb[:, 3] *= cb[:, 3]
+    cc = cb.copy()
+    cc[:, 3] *= cc[:, 3]
+    plt.scatter(x, y, c="black", marker='.', s=15, edgecolor='none', zorder=1)
+    plt.scatter(x, y, c=cc, marker='.', s=7, edgecolor='none', zorder=2)
+    plt.scatter(x, y, c=cb, marker='.', s=4, edgecolor='none', zorder=3)
+    plt.scatter(x, y, c=c, marker='.', s=2, edgecolor='none', zorder=4)
+
+
+def scatter_1D(arr, x0=0, y0=0, width=1):
+    """
+    Make a 1D scatter plot.
+
+    Put it in a row.
+    """
+    npts = arr.size
+    x = np.zeros(npts)
+    y = np.zeros(npts)
+    c = np.zeros((npts, 4))
+    c[:, :3] = np.array(light_copper)
+    x_unit = width / npts
+
+    for i_x in range(npts):
+        x[i_x] = i_x * x_unit
+        val = np.maximum(np.minimum(arr[i_x], 1), -1)
+        if val > 0:
+            c[i_x, 3] = val
+        else:
+            c[i_x,:3] = np.array(oxide)
+            c[i_x, 3] = -val
+
+    x += x0
+    y += y0
+    scatter(x, y, c)
+
+
+def scatter_2D(arr, x0=0, y0=0, width=1, height=1):
+    """
+    Make a 2D scatter plot.
+
+    row number corresponds to y value
+    column number corresponds to x value
+    """
+    nrows, ncols = arr.shape
+    npts = nrows * ncols
+    x = np.zeros(npts)
+    y = np.zeros(npts)
+    c = np.zeros((npts, 4))
+    c[:, :3] = np.array(light_copper)
+    y_unit = height / nrows
+    x_unit = width / ncols
+
+    for i_x in range(ncols):
+        for i_y in np.arange(nrows - 1, -1, -1, dtype=np.int):
+                j = i_x * nrows + i_y
+                x[j] = i_x * x_unit
+                y[j] = i_y * y_unit
+                val = np.maximum(np.minimum(arr[i_y, i_x], 1), -1)
+                if val > 0:
+                    c[j, 3] = val
+                else:
+                    c[j,:3] = np.array(oxide)
+                    c[j, 3] = -val
+
+    x += x0
+    y += y0
+    scatter(x, y, c)
+
+
+def scatter_3D(arr, x0=0, y0=0, width=1, height=1):
+    """
+
+    """
+    nrows, ncols, ndeps = arr.shape
+    npts = nrows * ncols * ndeps
+    x = np.zeros(npts)
+    y = np.zeros(npts)
+    c = np.zeros((npts, 4))
+    c[:, :3] = np.array(light_copper)
+
+    center = np.array([x0 + width / 2, y0 + height / 2])
+    # Direction vectors with foreshortening and scaling
+    fs = [.9, .7, 1]
+    scale = .6
+    length = np.sqrt(width * height) 
+    # theta
+    x_dir = fs[0] * scale * np.array([
+        np.cos(-10 * np.pi / 180), np.sin(-10 * np.pi / 180)])
+    y_dir = fs[1] * scale * np.array([
+        np.cos(30 * np.pi / 180), np.sin(30 * np.pi / 180)])
+    z_dir = fs[2] * scale * np.array([0, 1])
+    # Unit vectors
+    x_unit = x_dir * length / ncols
+    y_unit = y_dir * length / nrows
+    z_unit = z_dir * length / ndeps
+    # Origin
+    x_0 = -x_unit * ncols / 2
+    y_0 = -y_unit * nrows / 2
+    z_0 = -z_unit * ndeps / 2
+    xy_0 = center + x_0 + y_0 + z_0
+
+    x = np.zeros(npts)
+    y = np.zeros(npts)
+    c = np.zeros((npts, 4))
+    c[:, :3] = np.array(light_copper)
+
+    for i_x in range(ncols):
+        for i_y in np.arange(nrows - 1, -1, -1, dtype=np.int):
+            for i_z in range(ndeps):
+                j = i_x * nrows * ndeps + i_y * ndeps + i_z
+                x_part = i_x * x_unit
+                y_part = i_y * y_unit
+                z_part = i_z * z_unit
+                x[j], y[j] = x_part + y_part + z_part
+                c[j, 3] = np.minimum(arr[i_y, i_x, i_z], 1)
+    x += xy_0[0]
+    y += xy_0[1]
+    scatter(x, y, c)
+
+def nd_map(arr, map):
+    """
+    Apply a map to a multidimensional array.
+
+    Parameters
+    ----------
+    arr: nD array of floats
+    map: 2D array of ints
+
+    Returns
+    -------
+    nD array of floats
+        Re-mapped
+    """
+    nD = len(arr.shape)
+    dim_list = list(np.arange(nD, dtype=np.int))
+    shift_list = list(dim_list)
+    shift_list.append(shift_list.pop(0))
+
+    map_size = map.shape[0]
+    if nD == 1:
+        arr = arr[:map_size]
+    elif nD == 2:
+        arr = arr[:map_size, :map_size]
+    elif nD == 3:
+        arr = arr[:map_size, :map_size, :map_size]
+    elif nD == 4:
+        arr = arr[:map_size, :map_size, :map_size, :map_size]
+
+    for _ in range(nD):
+        arr = np.matmul(arr, map)
+        arr = np.moveaxis(arr, dim_list, shift_list)
+
+    return arr

@@ -11,10 +11,17 @@ def render(ziptie, bbox, x_inputs, cable_viz_map, y_prev, radius=0):
     Make a picture of the cable-to-bundle combinations that happen
     in a ziptie.
 
+    To keep notation simpler, maps will be referred to as map_xy,
+    where x and y can be any of the following:
+        A:  cable visualization order
+        B:  cable natural order (in which the ziptie receives it)
+        C:  bundle natural order (in which ziptie.map creates it)
+        D:  bundle visualization order
+
     Parameters
     ----------
     bbox: list of floats
-        Of the form [x_bottom, x_top, y_left, y_right]
+        Of the form [x_left, x_right, y_bottom, y_top]
     ziptie: Ziptie
     cable_viz_map: 2D array of ints
     y_prev: float
@@ -31,58 +38,57 @@ def render(ziptie, bbox, x_inputs, cable_viz_map, y_prev, radius=0):
     xmin, xmax, ymin, ymax = bbox
     frame_width = xmax - xmin
     frame_height = ymax - ymin
-    n_inputs = x_inputs.size
+    n_A = x_inputs.size
+    n_D = ziptie.n_bundles
 
-    x_cable_spacing = (frame_width - 2 * radius) / (n_inputs + 1)
-    x_cable = np.arange(
-        xmin + radius + x_cable_spacing, 
-        xmax - radius,
-        x_cable_spacing)
+    x_A_spacing = (frame_width - 2 * radius) / (n_A + 1)
+    x_A = np.linspace(
+        xmin + radius + x_A_spacing, 
+        xmax - radius - x_A_spacing,
+        num=n_A,
+        endpoint=True,
+    )
 
-    cable_activities = ziptie.cable_activities[:n_inputs]
-    # Connect the previous block(s) to this one.
-    i_to_viz_cables = np.where(cable_viz_map)[1]
-    for i_cable, activity in enumerate(cable_activities):
-        i_cable_viz = i_to_viz_cables[i_cable]
-        vt.plot_curve_activity(
-            x_inputs[i_cable_viz],
-            x_cable[i_cable_viz],
-            y_prev, ymin,
-            activity)
-        vt.plot_point_activity(
-            x_cable[i_cable_viz], ymin, activity, x_cable_spacing)
+    map_BA = cable_viz_map
+    map_AB = map_BA.T
+    activities_B = ziptie.cable_activities[:n_A]
+    # activities_A = np.matmul(map_AB, activities_B)
+    activities_A = np.matmul(activities_B, map_BA)
 
-    n_bundles = ziptie.n_bundles
-    if n_bundles > 0:
-        x_bundle_spacing = (frame_width - 2 * radius) / (n_bundles + 1)
-        x_bundles = np.arange(
-            xmin + radius + x_bundle_spacing, 
-            xmax - radius,
-            x_bundle_spacing)
+    if n_D > 0:
+        x_D_spacing = (frame_width - 2 * radius) / (n_D + 1)
+        x_D = np.linspace(
+            xmin + radius + x_D_spacing, 
+            xmax - radius - x_D_spacing,
+            num=n_D,
+            endpoint=True,
+        )
         
-        bundle_viz_map = np.zeros((n_bundles, n_bundles), dtype=np.int)
+        map_BC = ziptie.mapping[:n_A, :n_D]
+        x_B = np.matmul(x_A, map_AB)
+        bundle_score = (np.sum(x_B[:, np.newaxis] * map_BC, axis=0) /
+                        np.sum(map_BC, axis=0))
+        map_CD = np.zeros((n_D, n_D), dtype=np.int)
+        map_CD[np.arange(n_D, dtype=np.int),
+               np.argsort(np.argsort(bundle_score))] = 1
+        i_CD = np.matmul(map_CD, np.arange(n_D, dtype=np.int)) 
+        i_BA = np.matmul(np.arange(n_A, dtype=np.int), map_AB)
 
-        bundle_score = np.mean(
-            np.matmul(x_cable, cable_viz_map.T)[:, np.newaxis] *
-            ziptie.mapping[:, :n_bundles], axis=0)
-        bundle_viz_map[np.arange(n_bundles), np.argsort(bundle_score)] = 1
-        viz_to_i_bundle = np.where(bundle_viz_map)[1]
-        x_bundle_viz = np.matmul(x_bundles, bundle_viz_map)
-
-        for i_cable, activity in enumerate(cable_activities):
-            i_cable_viz = i_to_viz_cables[i_cable]
-            for i_bundle in np.where(
-                    ziptie.mapping[i_cable,:])[0]:
-                i_bundle_viz = viz_to_i_bundle[i_bundle]
-                x_end = x_bundles[i_bundle_viz]
-                x_start = x_cable[i_cable_viz]
+        for i_B, activity in enumerate(activities_B):
+            i_A = i_BA[i_B]
+            for i_C in np.where(map_BC[i_B,:])[0]:
+                i_D = i_CD[i_C]
+                x_end = x_D[i_D]
+                x_start = x_A[i_A]
                 vt.plot_curve_activity(x_start, x_end, ymin, ymax, activity)
-
-        for i_bundle, activity in enumerate(ziptie.bundle_activities):
-            x_end = x_bundle_viz[i_bundle]
-            vt.plot_point_activity(x_end, ymax, activity, x_bundle_spacing)
+        activities_C = ziptie.bundle_activities
+        activities_D = np.matmul(activities_C, map_CD)
+        for i_D, activity in enumerate(activities_D):
+            vt.plot_point_activity(x_D[i_D], ymax, activity, x_D_spacing)
     else:
-        x_bundles = None
-        bundle_viz_map = None
+        x_D = None
+        map_CD = None
 
+    x_bundles = x_D
+    bundle_viz_map = map_CD
     return x_bundles, bundle_viz_map
