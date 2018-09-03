@@ -1,9 +1,6 @@
 """
 Show what's going on inside an input filter.
 """
-import os
-
-import matplotlib.pyplot as plt
 import numpy as np
 
 import becca_viz.viz_tools as vt
@@ -35,13 +32,13 @@ def render(filter, bbox, y_pool, pool_viz_map, radius=0):
     feature_viz_map: 2D array of ints
     """
     xmin, xmax, ymin, ymax = bbox
-    frame_width = xmax - xmin
+    # frame_width = xmax - xmin
     frame_height = ymax - ymin
 
     n_pool = y_pool.size
     y_pool_spacing = (frame_height - 2 * radius) / (n_pool + 1)
     y_A = np.linspace(
-        ymin + radius + y_pool_spacing, 
+        ymin + radius + y_pool_spacing,
         ymax - radius - y_pool_spacing,
         num=n_pool,
         endpoint=True,
@@ -61,14 +58,14 @@ def render(filter, bbox, y_pool, pool_viz_map, radius=0):
 
     y_spacing = (frame_height - 2 * radius) / (n_inputs + 1)
     y_D = np.linspace(
-        ymin + radius + y_spacing, 
+        ymin + radius + y_spacing,
         ymax - radius - y_spacing,
         num=n_inputs,
         endpoint=True,
     )
     activities_D = np.matmul(activities_A, map_AD)
 
-    i_DA = np.matmul(np.arange(n_pool, dtype=np.int), map_AD) 
+    i_DA = np.matmul(np.arange(n_pool, dtype=np.int), map_AD)
     # Show the filter's selection
     for i_D, activity in enumerate(activities_D):
         i_A = i_DA[i_D]
@@ -76,5 +73,5 @@ def render(filter, bbox, y_pool, pool_viz_map, radius=0):
         y_start = y_A[i_A]
         vt.plot_curve_activity_horiz(y_start, y_end, xmin, xmax, activity)
         vt.plot_point_activity(xmax, y_end, activity, y_spacing)
-        
+
     return y_D, map_CD

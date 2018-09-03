@@ -1,9 +1,6 @@
 """
 Show what's going on inside the preprocessor.
 """
-import os
-
-import matplotlib.pyplot as plt
 import numpy as np
 
 import becca_viz.viz_tools as vt
@@ -33,7 +30,7 @@ def render(preprocessor, bbox, radius=0):
     n_inputs = preprocessor.n_inputs
     n_disc = len(preprocessor.discretizers)
     # The number of inputs plus the number of discretizers.
-    n_input_d = n_inputs + n_disc 
+    n_input_d = n_inputs + n_disc
     positions = np.zeros(n_input_d)
 
     x_spacing = (frame_width - 2 * radius) / float(len(positions) + 1)
@@ -147,4 +144,3 @@ def plot_branch(
     vt.plot_curve_activity(x_start, x_end,  y_start, y_end, activity)
     if is_leaf:
         vt.plot_line_activity([x_end, x_end], [y_end, max_y], activity)
-

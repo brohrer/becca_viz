@@ -1,9 +1,6 @@
 """
 Show what's going on inside the postprocessor.
 """
-import os
-
-import matplotlib.pyplot as plt
 import numpy as np
 
 import becca_viz.viz_tools as vt
@@ -32,7 +29,7 @@ def render(postprocessor, bbox, radius=0, phase=0):
 
     xmin, xmax, ymin, ymax = bbox
     frame_width = xmax - xmin
-    frame_height = ymax - ymin
+    # frame_height = ymax - ymin
     n_commands = postprocessor.n_commands
     n_actions = postprocessor.n_actions
     # Collect positions from all the commands.
@@ -48,7 +45,7 @@ def render(postprocessor, bbox, radius=0, phase=0):
     i_to_viz = np.eye(n_commands, dtype=np.int)
 
     # Show the upward, sensed commands from the previous time step.
-    for i_action, action in enumerate(postprocessor.actions):
+    for i_action, _ in enumerate(postprocessor.actions):
         for j in range(n_commands_per_action):
             i_command = i_action * n_commands_per_action + j
             command_activity = postprocessor.previous_commands[

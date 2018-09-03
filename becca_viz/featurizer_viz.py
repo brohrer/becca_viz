@@ -1,6 +1,3 @@
-import os
-
-import matplotlib.pyplot as plt
 import numpy as np
 
 import becca_viz.viz_tools as vt
@@ -8,8 +5,7 @@ import becca_viz.viz_tools as vt
 
 def render(featurizer, bbox, viz_maps, radius=0):
     """
-    y_pool_feature, feature_viz_map = featurizer_viz.render(
-    
+
     Parameters
     ----------
     featurizer : Featurizer
@@ -18,7 +14,7 @@ def render(featurizer, bbox, viz_maps, radius=0):
     viz_maps: list of 2D arrays of ints
         Maps between cable candidate pools and their visualization order.
     radius: float
-    
+
     Returns
     -------
     y_pool_feature: array of floats
@@ -27,11 +23,9 @@ def render(featurizer, bbox, viz_maps, radius=0):
         Map between the feature pool and their visualization order.
     """
     xmin, xmax, ymin, ymax = bbox
-    frame_width = xmax - xmin
+    # frame_width = xmax - xmin
     frame_height = ymax - ymin
 
-    print(np.where(viz_maps[0] == 1))
-    print(np.where(viz_maps[1] == 1))
     if viz_maps[-1] is None:
         viz_maps = viz_maps[:-1]
     block_rows = []
@@ -44,10 +38,9 @@ def render(featurizer, bbox, viz_maps, radius=0):
                 block_row.append(np.fliplr(viz_maps[i_map]))
             else:
                 block_row.append(np.zeros((mrows, ncols), dtype=np.int))
-        block_rows.append(block_row) 
+        block_rows.append(block_row)
 
     map_AB = np.block(block_rows).T
-    print(np.where(map_AB == 1))
     map_BC = featurizer.mapping
     order_CD = np.argsort(np.argsort(np.matmul(
         np.arange(map_AB.shape[0]),
@@ -55,16 +48,16 @@ def render(featurizer, bbox, viz_maps, radius=0):
     n_D = map_BC.shape[1]
     map_CD = np.zeros((n_D, n_D), dtype=np.int)
     map_CD[np.arange(n_D, dtype=np.int), order_CD] = 1
-    
+
     activities_B = []
     for level_activities in featurizer.activities:
         activities_B += list(level_activities)
     activities_B = np.array(activities_B)
     activities_D = np.matmul(activities_B, np.matmul(map_BC, map_CD))
-    
+
     y_spacing = (frame_height - 2 * radius) / (n_D + 1)
     y_D = np.linspace(
-        ymin + radius + y_spacing, 
+        ymin + radius + y_spacing,
         ymax - radius - y_spacing,
         num=n_D,
         endpoint=True,

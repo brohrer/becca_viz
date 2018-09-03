@@ -29,7 +29,7 @@ total_weight = 2 * halfwidth_weight + centerwidth_weight
 
 no_borders = wd_ - brd * 3  # Width available after borders are removed
 wdh = no_borders * halfwidth_weight / total_weight  # Width of wide columns
-wdc = no_borders * centerwidth_weight / total_weight  # Width of center column
+wdc = no_borders * centerwidth_weight / total_weight  # Center column width
 
 htf = ht_ - brd * 2  # Full height, minus borders
 n_zipties = 2  # Assumed number of zipties
@@ -41,22 +41,15 @@ wds = (wdh - brd) / 3  # Sixth-width
 
 rad = htr / 6  # The radius of the rounded corners on frames
 
-preprocessor_bbox = [brd, brd + 2 * wds,
-                     brd, brd + htr]
-postprocessor_bbox = [2 * brd + 2 * wds, brd + wdh,
-                      brd, brd + htr]
-filt_0_bbox = [brd, brd + wdh,
-                     2 * brd + htr, 2 * brd + 2 * htr]
-ziptie_0_bbox = [brd, brd + wdh,
-                 2 * brd + 2 * htr, 2 * brd + 3 * htr]
-filt_1_bbox = [brd, brd + wdh,
-                     3 * brd + 3 * htr, 3 * brd + 4 * htr]
-ziptie_1_bbox = [brd, brd + wdh,
-                 3 * brd + 4 * htr, 3 * brd + 5 * htr]
-feature_filt_bbox = [2 * brd + wdh, 2 * brd + wdh + wdc,
-                     brd, brd + htf]
-model_bbox = [2 * brd + wdh + wdc, 2 * brd + 2 * wdh + wdc,
-              brd, brd + htf]
+preprocessor_bbox = [brd, brd + 2 * wds, brd, brd + htr]
+postprocessor_bbox = [2 * brd + 2 * wds, brd + wdh, brd, brd + htr]
+filt_0_bbox = [brd, brd + wdh, 2 * brd + htr, 2 * brd + 2 * htr]
+ziptie_0_bbox = [brd, brd + wdh, 2 * brd + 2 * htr, 2 * brd + 3 * htr]
+filt_1_bbox = [brd, brd + wdh, 3 * brd + 3 * htr, 3 * brd + 4 * htr]
+ziptie_1_bbox = [brd, brd + wdh, 3 * brd + 4 * htr, 3 * brd + 5 * htr]
+feature_filt_bbox = [2 * brd + wdh, 2 * brd + wdh + wdc, brd, brd + htf]
+model_bbox = [
+    2 * brd + wdh + wdc, 2 * brd + 2 * wdh + wdc, brd, brd + htf]
 
 
 def visualize(brain):
@@ -67,6 +60,8 @@ def visualize(brain):
     ----------
     brain: Brain
     """
+    # TODO: Incorporate this into the main visualization.
+    brain.affect.visualize(brain)
     create_background()
     x_inputs, preprocessor_viz_map = preprocessor_viz.render(
         brain.preprocessor, preprocessor_bbox, radius=rad)
@@ -108,6 +103,7 @@ def visualize(brain):
         radius=rad)
     model_viz.render(
         brain.model,
+        brain.actor,
         model_bbox,
         feature_viz_map,
         radius=rad)
@@ -149,18 +145,18 @@ def title_frame(title, bbox, radius=0):
     )
 
 
-def create_background():
+def create_background(edgecolor=vt.oxide, facecolor=vt.dark_grey):
     """
     Set up the backdrop for the visualization.
     """
-    fig = plt.figure(num=84782, figsize=(wd_, ht_))
+    fig = plt.figure(num=84782, figsize=(wd_, ht_), frameon=False)
     fig.clf()
     ax = plt.gca()
     ax.add_patch(patches.Rectangle(
         (0, 0),
         wd_,
         ht_,
-        facecolor=vt.dark_grey,
+        facecolor=facecolor,
         edgecolor='none',
         zorder=-16.,
     ))
@@ -168,58 +164,58 @@ def create_background():
     vt.draw_frame(
         bbox=preprocessor_bbox,
         radius=rad,
-        facecolor=vt.dark_grey,
-        edgecolor=vt.copper,
-    )            
+        facecolor=facecolor,
+        edgecolor=edgecolor,
+    )
     # Postprocessor frame
     vt.draw_frame(
         bbox=postprocessor_bbox,
         radius=rad,
-        facecolor=vt.dark_grey,
-        edgecolor=vt.copper,
-    )            
+        facecolor=facecolor,
+        edgecolor=edgecolor,
+    )
     # Cable filter 0 frame
     vt.draw_frame(
         bbox=filt_0_bbox,
         radius=rad,
-        facecolor=vt.dark_grey,
-        edgecolor=vt.copper,
-    )            
+        facecolor=facecolor,
+        edgecolor=edgecolor,
+    )
     # Ziptie 0 frame
     vt.draw_frame(
         bbox=ziptie_0_bbox,
         radius=rad,
-        facecolor=vt.dark_grey,
-        edgecolor=vt.copper,
-    )            
+        facecolor=facecolor,
+        edgecolor=edgecolor,
+    )
     # Cable filter 1 frame
     vt.draw_frame(
         bbox=filt_1_bbox,
         radius=rad,
-        facecolor=vt.dark_grey,
-        edgecolor=vt.copper,
-    )            
+        facecolor=facecolor,
+        edgecolor=edgecolor,
+    )
     # Ziptie 1 frame
     vt.draw_frame(
         bbox=ziptie_1_bbox,
         radius=rad,
-        facecolor=vt.dark_grey,
-        edgecolor=vt.copper,
-    )            
+        facecolor=facecolor,
+        edgecolor=edgecolor,
+    )
     # feature filter frame
     vt.draw_frame(
         bbox=feature_filt_bbox,
         radius=rad,
-        facecolor=vt.dark_grey,
-        edgecolor=vt.copper,
-    )            
+        facecolor=facecolor,
+        edgecolor=edgecolor,
+    )
     # model frame
     vt.draw_frame(
         bbox=model_bbox,
         radius=rad,
-        facecolor=vt.dark_grey,
-        edgecolor=vt.copper,
-    )            
+        facecolor=facecolor,
+        edgecolor=edgecolor,
+    )
 
     return
 

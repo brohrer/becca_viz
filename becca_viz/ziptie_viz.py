@@ -1,6 +1,6 @@
-import os
+# import os
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 
 import becca_viz.viz_tools as vt
@@ -37,13 +37,13 @@ def render(ziptie, bbox, x_inputs, cable_viz_map, y_prev, radius=0):
     """
     xmin, xmax, ymin, ymax = bbox
     frame_width = xmax - xmin
-    frame_height = ymax - ymin
+    # frame_height = ymax - ymin
     n_A = x_inputs.size
     n_D = ziptie.n_bundles
 
     x_A_spacing = (frame_width - 2 * radius) / (n_A + 1)
     x_A = np.linspace(
-        xmin + radius + x_A_spacing, 
+        xmin + radius + x_A_spacing,
         xmax - radius - x_A_spacing,
         num=n_A,
         endpoint=True,
@@ -53,17 +53,17 @@ def render(ziptie, bbox, x_inputs, cable_viz_map, y_prev, radius=0):
     map_AB = map_BA.T
     activities_B = ziptie.cable_activities[:n_A]
     # activities_A = np.matmul(map_AB, activities_B)
-    activities_A = np.matmul(activities_B, map_BA)
+    # activities_A = np.matmul(activities_B, map_BA)
 
     if n_D > 0:
         x_D_spacing = (frame_width - 2 * radius) / (n_D + 1)
         x_D = np.linspace(
-            xmin + radius + x_D_spacing, 
+            xmin + radius + x_D_spacing,
             xmax - radius - x_D_spacing,
             num=n_D,
             endpoint=True,
         )
-        
+
         map_BC = ziptie.mapping[:n_A, :n_D]
         x_B = np.matmul(x_A, map_AB)
         bundle_score = (np.sum(x_B[:, np.newaxis] * map_BC, axis=0) /
@@ -71,12 +71,12 @@ def render(ziptie, bbox, x_inputs, cable_viz_map, y_prev, radius=0):
         map_CD = np.zeros((n_D, n_D), dtype=np.int)
         map_CD[np.arange(n_D, dtype=np.int),
                np.argsort(np.argsort(bundle_score))] = 1
-        i_CD = np.matmul(map_CD, np.arange(n_D, dtype=np.int)) 
+        i_CD = np.matmul(map_CD, np.arange(n_D, dtype=np.int))
         i_BA = np.matmul(np.arange(n_A, dtype=np.int), map_AB)
 
         for i_B, activity in enumerate(activities_B):
             i_A = i_BA[i_B]
-            for i_C in np.where(map_BC[i_B,:])[0]:
+            for i_C in np.where(map_BC[i_B, :])[0]:
                 i_D = i_CD[i_C]
                 x_end = x_D[i_D]
                 x_start = x_A[i_A]
