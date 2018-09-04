@@ -23,8 +23,10 @@ def render(model, actor, bbox, viz_map, radius=0):
     rewards = (model.feature_activities[:, np.newaxis] *
                model.prefix_rewards)[2:, 2:]
     viz_rewards = vt.nd_map(rewards, viz_map)
+    autoscaled_viz_rewards = viz_rewards / (
+        np.max(np.abs(viz_rewards)) + 1e-2)
     vt.scatter_2D(
-        viz_rewards,
+        autoscaled_viz_rewards,
         x0=xmin + 2 * x_gap + im_height,
         y0=(ymin + (n_image_rows - 1) * y_gap
             + (n_image_rows - 1) * im_height),
@@ -38,8 +40,10 @@ def render(model, actor, bbox, viz_map, radius=0):
     curiosities = (model.feature_activities[:, np.newaxis]
                    * model.prefix_curiosities)[2:, 2:]
     viz_curiosities = vt.nd_map(curiosities, viz_map)
+    autoscaled_viz_curiosities = viz_curiosities / (
+        np.max(viz_curiosities) + 1e-2)
     vt.scatter_2D(
-        viz_curiosities,
+        autoscaled_viz_curiosities,
         x0=xmin + x_gap,
         y0=(ymin + (n_image_rows - 1) * y_gap
             + (n_image_rows - 1) * im_height),
