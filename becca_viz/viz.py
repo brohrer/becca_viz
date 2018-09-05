@@ -3,9 +3,9 @@ Show the world and what's going on inside the brain.
 """
 import os
 
+import numpy as np
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
-import numpy as np
 
 import becca_viz.viz_tools as vt
 import becca_viz.preprocessor_viz as preprocessor_viz
