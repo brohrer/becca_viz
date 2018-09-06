@@ -220,7 +220,7 @@ def create_background(edgecolor=vt.oxide, facecolor=vt.dark_grey):
     return
 
 
-def finalize(brain, dpi=300, tag='activity'):
+def finalize(brain, dpi=300, tag='activity', verbose=True):
     """
     Complete any final formatting and save a copy of the figure.
 
@@ -244,3 +244,5 @@ def finalize(brain, dpi=300, tag='activity'):
         name=brain.name, age=brain.timestep, dpi=dpi, tag=tag)
     pathname = os.path.join(brain.log_dir, filename)
     plt.savefig(pathname, format='png', dpi=dpi)
+    if verbose:
+        print('Saved', pathname)
