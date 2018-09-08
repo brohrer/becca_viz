@@ -52,16 +52,20 @@ model_bbox = [
     2 * brd + wdh + wdc, 2 * brd + 2 * wdh + wdc, brd, brd + htf]
 
 
-def visualize(brain):
+def visualize(brain, full_visualize=False):
     """
     Render the sensor information making its way up through the brain.
 
     Parameters
     ----------
     brain: Brain
+    full_visualize: bool
     """
     # TODO: Incorporate this into the main visualization.
     brain.affect.visualize(brain)
+    if not full_visualize:
+        return
+
     create_background()
     x_inputs, preprocessor_viz_map = preprocessor_viz.render(
         brain.preprocessor, preprocessor_bbox, radius=rad)
