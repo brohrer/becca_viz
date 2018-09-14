@@ -15,6 +15,7 @@ import becca_viz.ziptie_viz as ziptie_viz
 import becca_viz.featurizer_viz as featurizer_viz
 import becca_viz.feature_filter_viz as feature_filter_viz
 import becca_viz.model_viz as model_viz
+import becca_viz.actor_viz as actor_viz
 
 
 lwf = .3  # Linewidth of the frames
@@ -36,11 +37,13 @@ n_zipties = 2  # Assumed number of zipties
 n_rows = 1 + 2 * n_zipties  # Total number of frames stacked vertically
 no_borders_ht = ht_ - brd * (n_zipties + 2)  # Total non-border height
 htr = no_borders_ht / n_rows  # height of each row
+wdt = (wdh - brd) / 1.5  # Third-width
 wdq = (wdh - brd) / 2  # Quarter-width
 wds = (wdh - brd) / 3  # Sixth-width
 
 rad = htr / 6  # The radius of the rounded corners on frames
 
+# bboxes are in the format [x_min, x_max, y_min, y_max]
 preprocessor_bbox = [brd, brd + 2 * wds, brd, brd + htr]
 postprocessor_bbox = [2 * brd + 2 * wds, brd + wdh, brd, brd + htr]
 filt_0_bbox = [brd, brd + wdh, 2 * brd + htr, 2 * brd + 2 * htr]
@@ -49,23 +52,19 @@ filt_1_bbox = [brd, brd + wdh, 3 * brd + 3 * htr, 3 * brd + 4 * htr]
 ziptie_1_bbox = [brd, brd + wdh, 3 * brd + 4 * htr, 3 * brd + 5 * htr]
 feature_filt_bbox = [2 * brd + wdh, 2 * brd + wdh + wdc, brd, brd + htf]
 model_bbox = [
-    2 * brd + wdh + wdc, 2 * brd + 2 * wdh + wdc, brd, brd + htf]
+    2 * brd + wdh + wdc, 2 * brd + wdh + wdc + wdt, brd, brd + htf]
+actor_bbox = [
+    2 * brd + wdh + wdc + wdt, 2 * brd + 2 * wdh + wdc, brd, brd + htf]
 
 
-def visualize(brain, full_visualize=False):
+def visualize(brain):
     """
     Render the sensor information making its way up through the brain.
 
     Parameters
     ----------
     brain: Brain
-    full_visualize: bool
     """
-    # TODO: Incorporate this into the main visualization.
-    brain.affect.visualize(brain)
-    if not full_visualize:
-        return
-
     create_background()
     x_inputs, preprocessor_viz_map = preprocessor_viz.render(
         brain.preprocessor, preprocessor_bbox, radius=rad)
@@ -98,17 +97,27 @@ def visualize(brain, full_visualize=False):
         brain.featurizer,
         feature_filt_bbox,
         pool_viz_map,
-        radius=rad)
+        radius=rad,
+    )
     y_feature, feature_viz_map = feature_filter_viz.render(
         brain.model.filter,
         feature_filt_bbox,
         y_pool_feature,
         feature_pool_viz_map,
-        radius=rad)
+        radius=rad,
+        n_inputs=n_pre,
+        n_commands=n_post,
+        n_bundles_all=[brain.featurizer.ziptie.n_bundles],
+    )
     model_viz.render(
         brain.model,
-        brain.actor,
         model_bbox,
+        feature_viz_map,
+        radius=rad)
+    actor_viz.render(
+        brain.model,
+        brain.actor,
+        actor_bbox,
         feature_viz_map,
         radius=rad)
 
@@ -216,6 +225,13 @@ def create_background(edgecolor=vt.oxide, facecolor=vt.dark_grey):
     # model frame
     vt.draw_frame(
         bbox=model_bbox,
+        radius=rad,
+        facecolor=facecolor,
+        edgecolor=edgecolor,
+    )
+    # actor frame
+    vt.draw_frame(
+        bbox=actor_bbox,
         radius=rad,
         facecolor=facecolor,
         edgecolor=edgecolor,

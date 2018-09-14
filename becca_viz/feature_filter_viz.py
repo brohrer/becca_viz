@@ -2,11 +2,21 @@
 Show what's going on inside an input filter.
 """
 import numpy as np
+import matplotlib.pyplot as plt
 
 import becca_viz.viz_tools as vt
 
 
-def render(filter, bbox, y_pool, pool_viz_map, radius=0):
+def render(
+    filter,
+    bbox,
+    y_pool,
+    pool_viz_map,
+    radius=0,
+    n_commands=None,
+    n_inputs=None,
+    n_bundles_all=None,
+):
     """
     Make a picture of the discretization that happens in an input filter.
 
@@ -25,6 +35,8 @@ def render(filter, bbox, y_pool, pool_viz_map, radius=0):
     y_pool: array of floats
     pool_viz_map: 2D array of ints
     radius: float
+    n_commands, n_inputs: int
+    n_bundles_all: list of int
 
     Returns
     -------
@@ -32,17 +44,69 @@ def render(filter, bbox, y_pool, pool_viz_map, radius=0):
     feature_viz_map: 2D array of ints
     """
     xmin, xmax, ymin, ymax = bbox
-    # frame_width = xmax - xmin
-    frame_height = ymax - ymin
+    width = xmax - xmin
+    height = ymax - ymin
 
     n_pool = y_pool.size
-    y_pool_spacing = (frame_height - 2 * radius) / (n_pool + 1)
+    y_pool_spacing = (height - 2 * radius) / (n_pool + 1)
     y_A = np.linspace(
         ymin + radius + y_pool_spacing,
         ymax - radius - y_pool_spacing,
         num=n_pool,
         endpoint=True,
     )
+
+    # Place labels alongside the features to show where they come from.
+    if (
+        n_commands is not None
+        and n_inputs is not None
+        and n_bundles_all is not None
+    ):
+        i_last = n_commands - 1
+        ylabel = "commands"
+        text_sep = width * vt.text_shift
+        plt.text(
+            xmin - text_sep,
+            y_A[i_last],
+            ylabel,
+            fontsize=4,
+            color=vt.copper,
+            verticalalignment="top",
+            horizontalalignment="right",
+            rotation=-90,
+            family="sans-serif",
+        )
+        i_last += n_inputs
+        ylabel = "inputs"
+        text_sep = width * vt.text_shift
+        plt.text(
+            xmin - text_sep,
+            y_A[i_last],
+            ylabel,
+            fontsize=4,
+            color=vt.copper,
+            verticalalignment="top",
+            horizontalalignment="right",
+            rotation=-90,
+            family="sans-serif",
+        )
+
+        for i_ziptie, n_bundles in enumerate(n_bundles_all):
+            if n_bundles > 0:
+                i_last += n_bundles
+                ylabel = "ziptie " + str(i_ziptie)
+                text_sep = width * vt.text_shift
+                plt.text(
+                    xmin - text_sep,
+                    y_A[i_last],
+                    ylabel,
+                    fontsize=4,
+                    color=vt.copper,
+                    verticalalignment="top",
+                    horizontalalignment="right",
+                    rotation=-90,
+                    family="sans-serif",
+                )
 
     map_AB = pool_viz_map.T
     activities_B = filter.candidate_activities
@@ -56,7 +120,7 @@ def render(filter, bbox, y_pool, pool_viz_map, radius=0):
     map_CD[np.arange(n_inputs, dtype=np.int), order_CD] = 1
     map_AD = np.matmul(map_AC, map_CD)
 
-    y_spacing = (frame_height - 2 * radius) / (n_inputs + 1)
+    y_spacing = (height - 2 * radius) / (n_inputs + 1)
     y_D = np.linspace(
         ymin + radius + y_spacing,
         ymax - radius - y_spacing,

@@ -339,18 +339,27 @@ def scatter(x, y, c):
 
 
 def scatter_1D(
-    arr,
+    raw_arr,
     x0=0,
     y0=0,
     width=1,
     xlabel='',
     title='',
+    autoscale=False,
+    max_floor=1e-2
 ):
     """
     Make a 1D scatter plot.
 
     Put it in a row.
     """
+    if autoscale:
+        max_val = np.maximum(np.max(np.abs(raw_arr)), max_floor)
+        max_text = "{0:.2f}".format(max_val)
+        arr = raw_arr / max_val
+    else:
+        arr = raw_arr
+
     npts = arr.size
     x = np.zeros(npts)
     y = np.zeros(npts)
@@ -382,21 +391,57 @@ def scatter_1D(
         horizontalalignment="left",
         family="sans-serif",
     )
-    plt.text(
-        x0 + width * title_shift,
-        y0 + text_sep,
-        title,
-        fontsize=6,
-        color=copper,
-        verticalalignment="bottom",
-        horizontalalignment="left",
-        family="sans-serif",
-    )
+    if autoscale:
+        max_label_shift = .03
+        bar_width = np.minimum(max_val, 1)
+        plt.plot(
+            [x0, x0 + width],
+            [y0 + text_sep, y0 + text_sep],
+            color='black',
+            linewidth=.5,
+        )
+        plt.plot(
+            [x0, x0 + width * bar_width],
+            [y0 + text_sep, y0 + text_sep],
+            color=dark_copper,
+            linewidth=.5,
+        )
+        plt.text(
+            x0 + width * (bar_width + max_label_shift),
+            y0 + text_sep,
+            max_text,
+            fontsize=3,
+            color=copper,
+            verticalalignment="center",
+            horizontalalignment="left",
+            family="sans-serif",
+        )
+        plt.text(
+            x0 + width * title_shift,
+            y0 + 2 * text_sep,
+            title,
+            fontsize=6,
+            color=copper,
+            verticalalignment="bottom",
+            horizontalalignment="left",
+            family="sans-serif",
+        )
+    else:
+        plt.text(
+            x0 + width * title_shift,
+            y0 + text_sep,
+            title,
+            fontsize=6,
+            color=copper,
+            verticalalignment="bottom",
+            horizontalalignment="left",
+            family="sans-serif",
+        )
     return
 
 
 def scatter_2D(
-    arr,
+    raw_arr,
     x0=0,
     y0=0,
     width=1,
@@ -404,6 +449,8 @@ def scatter_2D(
     xlabel='',
     ylabel='',
     title='',
+    autoscale=False,
+    max_floor=1e-2
 ):
     """
     Make a 2D scatter plot.
@@ -411,6 +458,13 @@ def scatter_2D(
     row number corresponds to y value
     column number corresponds to x value
     """
+    if autoscale:
+        max_val = np.maximum(np.max(np.abs(raw_arr)), max_floor)
+        max_text = "{0:.2f}".format(max_val)
+        arr = raw_arr / max_val
+    else:
+        arr = raw_arr
+
     nrows, ncols = arr.shape
     npts = nrows * ncols
     x = np.zeros(npts)
@@ -458,16 +512,52 @@ def scatter_2D(
         horizontalalignment="right",
         family="sans-serif",
     )
-    plt.text(
-        x0 + width * title_shift,
-        y0 + height + text_sep,
-        title,
-        fontsize=6,
-        color=copper,
-        verticalalignment="bottom",
-        horizontalalignment="left",
-        family="sans-serif",
-    )
+    if autoscale:
+        max_label_shift = .03
+        bar_width = np.minimum(max_val, 1)
+        plt.plot(
+            [x0, x0 + width],
+            [y0 + height + text_sep, y0 + height + text_sep],
+            color='black',
+            linewidth=.5,
+        )
+        plt.plot(
+            [x0, x0 + width * bar_width],
+            [y0 + height + text_sep, y0 + height + text_sep],
+            color=dark_copper,
+            linewidth=.5,
+        )
+        plt.text(
+            x0 + width * (bar_width + max_label_shift),
+            y0 + height + text_sep,
+            max_text,
+            fontsize=3,
+            color=copper,
+            verticalalignment="center",
+            horizontalalignment="left",
+            family="sans-serif",
+        )
+        plt.text(
+            x0 + width * title_shift,
+            y0 + height + 2 * text_sep,
+            title,
+            fontsize=6,
+            color=copper,
+            verticalalignment="bottom",
+            horizontalalignment="left",
+            family="sans-serif",
+        )
+    else:
+        plt.text(
+            x0 + width * title_shift,
+            y0 + height + text_sep,
+            title,
+            fontsize=6,
+            color=copper,
+            verticalalignment="bottom",
+            horizontalalignment="left",
+            family="sans-serif",
+        )
     return
 
 

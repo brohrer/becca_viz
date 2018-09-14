@@ -1,7 +1,5 @@
-# import os
-
-# import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 
 import becca_viz.viz_tools as vt
 
@@ -37,7 +35,21 @@ def render(ziptie, bbox, x_inputs, cable_viz_map, y_prev, radius=0):
     """
     xmin, xmax, ymin, ymax = bbox
     frame_width = xmax - xmin
-    # frame_height = ymax - ymin
+    height = ymax - ymin
+
+    xlabel = ziptie.name
+    text_sep = height * vt.text_shift
+    plt.text(
+        xmin + radius,
+        ymin + height + text_sep,
+        xlabel,
+        fontsize=4,
+        color=vt.copper,
+        verticalalignment="bottom",
+        horizontalalignment="right",
+        family="sans-serif",
+    )
+
     n_A = x_inputs.size
     n_D = ziptie.n_bundles
 

@@ -1,7 +1,5 @@
-"""
-Show what's going on inside the preprocessor.
-"""
 import numpy as np
+import matplotlib.pyplot as plt
 
 import becca_viz.viz_tools as vt
 
@@ -57,6 +55,38 @@ def render(preprocessor, bbox, radius=0):
     input_viz_map[np.argsort(input_x), np.arange(n_inputs)] = 1
     input_x_viz = np.matmul(input_x, input_viz_map)
 
+    # Create labels
+    xlabel = "sensors"
+    height = ymax - ymin
+    text_sep = height * vt.text_shift
+    plt.text(
+        xmin + radius,
+        ymin - text_sep,
+        xlabel,
+        fontsize=4,
+        color=vt.copper,
+        verticalalignment="top",
+        horizontalalignment="right",
+        family="sans-serif",
+    )
+
+    xlabel = "inputs"
+    text_sep = height * vt.text_shift
+    plt.text(
+        xmin + radius,
+        ymin + height + text_sep,
+        xlabel,
+        fontsize=4,
+        color=vt.copper,
+        verticalalignment="bottom",
+        horizontalalignment="right",
+        family="sans-serif",
+    )
+
+    # Find the spacing between labeled sensors
+    n_target = 4
+    d_label = int(2 ** np.maximum(0, int(np.log2(n_disc / n_target))))
+
     for i_discretizer, discretizer in enumerate(preprocessor.discretizers):
         # Build trees.
         n_depth = 1. + np.maximum(
@@ -64,6 +94,19 @@ def render(preprocessor, bbox, radius=0):
             discretizer.string_cats.depth)
         branch_length = frame_height / n_depth
         sensor_x = discretizer_x[i_discretizer]
+
+        # Apply sensor labels
+        if i_discretizer % d_label == 0:
+            plt.text(
+                sensor_x,
+                ymin - text_sep,
+                str(i_discretizer),
+                fontsize=4,
+                color=vt.copper,
+                verticalalignment="top",
+                horizontalalignment="center",
+                family="sans-serif",
+            )
 
         def plot_tree(tree):
             root_x = input_x[tree.root.i_input]

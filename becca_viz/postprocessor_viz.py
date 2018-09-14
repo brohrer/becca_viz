@@ -1,7 +1,5 @@
-"""
-Show what's going on inside the postprocessor.
-"""
 import numpy as np
+import matplotlib.pyplot as plt
 
 import becca_viz.viz_tools as vt
 
@@ -28,24 +26,69 @@ def render(postprocessor, bbox, radius=0, phase=0):
     """
 
     xmin, xmax, ymin, ymax = bbox
-    frame_width = xmax - xmin
-    # frame_height = ymax - ymin
+    width = xmax - xmin
+    height = ymax - ymin
     n_commands = postprocessor.n_commands
     n_actions = postprocessor.n_actions
     # Collect positions from all the commands.
     n_commands_per_action = int(n_commands / n_actions)
     x_command_spacing = (
-        (frame_width - 2 * radius) / (n_commands + 1))
+        (width - 2 * radius) / (n_commands + 1))
     x_commands = (xmin + radius + x_command_spacing *
                   np.cumsum(np.ones(n_commands)))
-    x_action_spacing = (frame_width - 2 * radius) / (n_actions + 1)
+    x_action_spacing = (width - 2 * radius) / (n_actions + 1)
     x_actions = (xmin + radius + x_action_spacing *
                  np.cumsum(np.ones(n_commands)))
 
     i_to_viz = np.eye(n_commands, dtype=np.int)
 
+    # Create labels
+    xlabel = "actions"
+    text_sep = height * vt.text_shift
+    plt.text(
+        # xmin + width * vt.xlabel_shift,
+        xmin + radius,
+        ymin - text_sep,
+        xlabel,
+        fontsize=4,
+        color=vt.copper,
+        verticalalignment="top",
+        horizontalalignment="right",
+        family="sans-serif",
+    )
+
+    xlabel = "commands"
+    text_sep = height * vt.text_shift
+    plt.text(
+        xmin + radius,
+        ymin + height + text_sep,
+        xlabel,
+        fontsize=4,
+        color=vt.copper,
+        verticalalignment="bottom",
+        horizontalalignment="right",
+        family="sans-serif",
+    )
+
+    # Find the spacing between labeled sensors
+    n_target = 4
+    d_label = int(2 ** np.maximum(0, int(np.log2(n_actions / n_target))))
+
     # Show the upward, sensed commands from the previous time step.
     for i_action, _ in enumerate(postprocessor.actions):
+
+        # Apply action labels
+        if i_action % d_label == 0:
+            plt.text(
+                x_actions[i_action],
+                ymin - text_sep,
+                str(i_action),
+                fontsize=4,
+                color=vt.copper,
+                verticalalignment="top",
+                horizontalalignment="center",
+                family="sans-serif",
+            )
         for j in range(n_commands_per_action):
             i_command = i_action * n_commands_per_action + j
             command_activity = postprocessor.previous_commands[
