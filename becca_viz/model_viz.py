@@ -59,7 +59,6 @@ def render(model, bbox, viz_map, max_floor=1e-2, radius=0):
     sequences_viz = vt.nd_map(sequences[2:, 2:, 2:], viz_map)
     # Goal direction is x.
     # Post feature direction is y.
-    # viz_futures = np.max(sequences_viz, axis=1).transpose()
     viz_futures = np.max(sequences_viz, axis=2)
 
     prefix_activities = vt.nd_map(model.prefix_activities[2:, 2:], viz_map)

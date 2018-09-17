@@ -22,7 +22,7 @@ lwf = .3  # Linewidth of the frames
 
 wd_ = 18  # Total width of the image
 ht_ = 9  # Total heigh of the image
-brd = .75  # Border thickness around frames
+brd = .5  # Border thickness around frames
 
 halfwidth_weight = 5
 centerwidth_weight = 1
@@ -124,46 +124,14 @@ def visualize(brain):
     finalize(brain, dpi=300)
 
 
-def labels(brain):
-    """
-    Generate a set of labels for the visualization.
-    """
-    create_background()
-    title_frame("Preprocessor", preprocessor_bbox, radius=rad)
-    title_frame("Postprocessor", postprocessor_bbox, radius=rad)
-    title_frame("Cable filter 0", filt_0_bbox, radius=rad)
-    title_frame("Ziptie 0", ziptie_0_bbox, radius=rad)
-    title_frame("Cable filter 1", filt_1_bbox, radius=rad)
-    title_frame("Ziptie 1", ziptie_1_bbox, radius=rad)
-    title_frame("Feature\nfilter", feature_filt_bbox, radius=rad)
-    title_frame("Model", model_bbox, radius=rad)
-    model_viz.labels(model_bbox, radius=rad)
-
-    finalize(brain, dpi=300, tag='labels')
-
-
-def title_frame(title, bbox, radius=0):
-    """
-    Label the rendered components.
-    """
-    xmin, xmax, ymin, ymax = bbox
-    plt.text(
-        xmin + radius,
-        ymax - radius,
-        title,
-        fontsize=16,
-        color=vt.copper,
-        verticalalignment="top",
-        family="sans-serif",
-    )
-
-
 def create_background(edgecolor=vt.oxide, facecolor=vt.dark_grey):
     """
     Set up the backdrop for the visualization.
     """
-    fig = plt.figure(num=84782, figsize=(wd_, ht_), frameon=False)
+    # plt.style.use('dark_background')
+    fig = plt.figure(num=84782, figsize=(wd_, ht_))
     fig.clf()
+    # plt.style.use('dark_background')
     ax = plt.gca()
     ax.add_patch(patches.Rectangle(
         (0, 0),
@@ -173,6 +141,7 @@ def create_background(edgecolor=vt.oxide, facecolor=vt.dark_grey):
         edgecolor='none',
         zorder=-16.,
     ))
+
     # Preprocessor frame
     vt.draw_frame(
         bbox=preprocessor_bbox,
@@ -256,13 +225,14 @@ def finalize(brain, dpi=300, tag='activity', verbose=True):
         Phase 2 is acting ( a downward pass through the architecture).
 
     """
-    plt.tight_layout()
-    plt.axis('equal')
     plt.axis('off')
+    plt.axis([0, wd_, 0, ht_])
 
     filename = 'becca_{name}_{dpi:04d}_{age:08d}_{tag}.png'.format(
         name=brain.name, age=brain.timestep, dpi=dpi, tag=tag)
     pathname = os.path.join(brain.log_dir, filename)
-    plt.savefig(pathname, format='png', dpi=dpi)
+    plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    plt.gca().yaxis.set_major_locator(plt.NullLocator())
+    plt.savefig(pathname, dpi=dpi, bbox_inches="tight", pad_inches=0)
     if verbose:
         print('Saved', pathname)

@@ -13,7 +13,6 @@ def render(model, actor, bbox, viz_map, max_floor=1e-2, radius=0):
     frame_width = xmax - xmin
     frame_height = ymax - ymin
 
-    # y_gap = 2 * radius
     y_gap = 0
     im_height = (frame_height - (n_image_rows + 1) * y_gap) / n_image_rows
     x_gap = (frame_width - im_height) / 2
